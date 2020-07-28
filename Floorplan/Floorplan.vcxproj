@@ -151,7 +151,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Floorplan.cpp" />
+    <ClCompile Include="GuillotineBinPack.cpp" />
+    <ClCompile Include="Main.cpp" />
+    <ClCompile Include="SkylineBinPack.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="GuillotineBinPack.h" />
+    <ClInclude Include="Rect.hpp" />
+    <ClInclude Include="SkylineBinPack.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
