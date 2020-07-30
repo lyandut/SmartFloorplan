@@ -25,6 +25,10 @@ namespace rbp {
 	{
 		int width;
 		int height;
+
+		// used for floorplan.
+		int id;
+		int group_id;
 	};
 
 	struct Rect

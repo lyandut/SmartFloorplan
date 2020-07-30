@@ -23,6 +23,16 @@ namespace rbp {
 
 	using namespace std;
 
+	/// Represents a single level (a horizontal line) of the skyline/horizon/envelope.
+	struct SkylineNode {
+		/// The starting x-coordinate (leftmost).
+		int x;
+		/// The y-coordinate of the skyline level line.
+		int y;
+		/// The line width. The ending coordinate (inclusive) will be x+width-1.
+		int width;
+	};
+
 	/// Implements bin packing algorithms that use the SKYLINE data structure to store the bin contents.
 	///	Uses GuillotineBinPack as the waste map.
 	class SkylineBinPack {
@@ -31,26 +41,28 @@ namespace rbp {
 		SkylineBinPack() : binWidth(0), binHeight(0) {}
 
 		/// Instantiates a bin of the given size.
-		SkylineBinPack(int width, int height, bool use_waste_map) { Init(width, height, use_waste_map); }
+		SkylineBinPack(int width, int height, bool useWasteMap_) { Init(width, height, useWasteMap_); }
 
 		/// (重新)初始化packer
-		void Init(int width, int height, bool use_waste_map) {
+		void Init(int width, int height, bool useWasteMap_) {
 			binWidth = width;
 			binHeight = height;
-			useWasteMap = use_waste_map;
+			useWasteMap = useWasteMap_;
 			if (useWasteMap) {
 				wasteMap.Init(binWidth, binHeight);
 				wasteMap.GetFreeRectangles().clear();
 			}
-
 			usedSurfaceArea = 0;
 			skyLine.clear();
-			skyLine.emplace_back(0, 0, binWidth);
+			skyLine.push_back({ 0, 0, binWidth });
 			debug_run(disjointRects.Clear());
 		}
 
 		/// 定义启发式打包规则.
-		enum LevelChoiceHeuristic { LevelBottomLeft, LevelMinWasteFit };
+		enum LevelChoiceHeuristic {
+			LevelBottomLeft,   // 最小高度
+			LevelMinWasteFit   // 最小浪费
+		};
 
 		/// 将一批矩形放置到bin中，矩形可能旋转
 		/// @param rects 源矩形列表
@@ -108,7 +120,6 @@ namespace rbp {
 		Rect Insert(int width, int height, LevelChoiceHeuristic method) {
 			// 首先在waste map中尝试放置
 			Rect node = wasteMap.Insert(width, height, true, GuillotineBinPack::RectBestShortSideFit, GuillotineBinPack::SplitMaximizeArea);
-			debug_assert(disjointRects.Disjoint(node));
 
 			// waste map中可以放置
 			if (node.height != 0) {
@@ -121,7 +132,7 @@ namespace rbp {
 			// waste map中不能放置
 			switch (method) {
 			case LevelChoiceHeuristic::LevelBottomLeft:
-				return InsertBottomLeft(width, height);
+				return InsertMinHeight(width, height);
 			case LevelChoiceHeuristic::LevelMinWasteFit:
 				return InsertMinWaste(width, height);
 			default:
@@ -134,8 +145,8 @@ namespace rbp {
 		float Occupancy() const { return (float)usedSurfaceArea / (binWidth * binHeight); }
 
 
-	private:
-		/// 基于“最左最下”，遍历skyline选择最佳位置
+	protected:
+		/// 基于最小高度，遍历skyline选择最佳位置
 		Rect FindPositionForNewNodeBottomLeft(int width, int height, int &bestHeight, int &bestWidth, int &bestIndex) const {
 			bestHeight = std::numeric_limits<int>::max();
 			bestWidth = std::numeric_limits<int>::max(); // 高度相同选择skyline宽度较小的
@@ -285,7 +296,7 @@ namespace rbp {
 			}
 		}
 
-		Rect InsertBottomLeft(int width, int height) {
+		Rect InsertMinHeight(int width, int height) {
 			int bestHeight, bestWidth, bestIndex;
 			Rect newNode = FindPositionForNewNodeBottomLeft(width, height, bestHeight, bestWidth, bestIndex);
 			if (bestIndex != -1) {
@@ -316,21 +327,9 @@ namespace rbp {
 		}
 
 
-	private:
+	protected:
 		int binWidth;
 		int binHeight;
-
-		debug_run(DisjointRectCollection disjointRects;)
-
-			/// Represents a single level (a horizontal line) of the skyline/horizon/envelope.
-			struct SkylineNode {
-			/// The starting x-coordinate (leftmost).
-			int x;
-			/// The y-coordinate of the skyline level line.
-			int y;
-			/// The line width. The ending coordinate (inclusive) will be x+width-1.
-			int width;
-		};
 
 		std::vector<SkylineNode> skyLine;
 
@@ -340,6 +339,8 @@ namespace rbp {
 		/// If true, we use the GuillotineBinPack structure to recover wasted areas into a waste map.
 		bool useWasteMap;
 		GuillotineBinPack wasteMap;
+
+		debug_run(DisjointRectCollection disjointRects;)
 	};
 
 }

@@ -20,40 +20,6 @@ namespace rbp {
 
 using namespace std;
 
-GuillotineBinPack::GuillotineBinPack()
-:binWidth(0),
-binHeight(0)
-{
-}
-
-GuillotineBinPack::GuillotineBinPack(int width, int height)
-{
-	Init(width, height);
-}
-
-void GuillotineBinPack::Init(int width, int height)
-{
-	binWidth = width;
-	binHeight = height;
-
-#ifdef _DEBUG
-	disjointRects.Clear();
-#endif
-
-	// Clear any memory of previously packed rectangles.
-	usedRectangles.clear();
-
-	// We start with a single big free rectangle that spans the whole bin.
-	Rect n;
-	n.x = 0;
-	n.y = 0;
-	n.width = width;
-	n.height = height;
-
-	freeRectangles.clear();
-	freeRectangles.push_back(n);
-}
-
 void GuillotineBinPack::Insert(std::vector<RectSize> &rects, bool merge, 
 	FreeRectChoiceHeuristic rectChoice, GuillotineSplitHeuristic splitMethod)
 {

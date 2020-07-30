@@ -19,9 +19,6 @@
       <Filter>Lib</Filter>
     </ClCompile>
     <ClCompile Include="Main.cpp" />
-    <ClCompile Include="SkylineBinPack.cpp">
-      <Filter>Lib</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GuillotineBinPack.h">
@@ -32,6 +29,9 @@
     </ClInclude>
     <ClInclude Include="SkylineBinPack.hpp">
       <Filter>Lib</Filter>
+    </ClInclude>
+    <ClInclude Include="FloorplanBinPack.hpp">
+      <Filter>Algorithm</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

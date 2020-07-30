@@ -153,10 +153,13 @@
   <ItemGroup>
     <ClCompile Include="GuillotineBinPack.cpp" />
     <ClCompile Include="Main.cpp" />
-    <ClCompile Include="SkylineBinPack.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GuillotineBinPack.h" />
+    <ClInclude Include="FloorplanBinPack.hpp">
+      <SubType>
+      </SubType>
+    </ClInclude>
     <ClInclude Include="Rect.hpp" />
     <ClInclude Include="SkylineBinPack.hpp" />
   </ItemGroup>
