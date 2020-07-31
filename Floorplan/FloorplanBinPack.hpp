@@ -20,20 +20,21 @@ namespace fbp {
 			init_rects_groups(group_num);
 		}
 
-		/// 分组搜索规则
+		/// 分组搜索策略
 		enum LevelGroupSearch {
 			LevelSelfishly,      // 仅当前分组
 			LevelNeighborAll,    // 当前分组和全部邻居分组
 			LevelNeighborPartial // [todo] 当前分组和部分邻居分组，或按百分比选取邻居的部分矩形
 		};
 
+		/// 放置策略
 		enum LevelHeuristicSearch {
-			LevelBottomLeftScore, // 最下最左skyline，考虑靠skyline右侧放置
-			LevelMinHeightFit,    // 最小高度rectangle，不考虑右侧放置
-			LevelMinWasteFit      // 最小浪费rectangle，不考虑右侧放置
+			LevelMinHeightFit,    // 最小高度rectangle，不考虑靠skyline右侧放置
+			LevelMinWasteFit,     // 最小浪费rectangle，不考虑靠skyline右侧放置
+			LevelBottomLeftScore  // 最下最左skyline，考虑靠skyline右侧放置
 		};
 
-		void insert(vector<Rect> &dst, LevelGroupSearch method_1, LevelHeuristicSearch method_2) {
+		void insert_greedy_fit(vector<Rect> &dst, LevelGroupSearch method_1, LevelHeuristicSearch method_2) {
 			dst.clear();
 			while (!_rects.empty()) {
 				Rect best_node;
@@ -42,44 +43,36 @@ namespace fbp {
 				int best_skyline_index = -1;
 				int best_rect_index = -1;
 
-				if (method_2 == LevelHeuristicSearch::LevelBottomLeftScore) {
-					// [todo] 将skyline按照y坐标排序，每次调用min_element复杂度较高
-					auto bottom_iter = min_element(skyLine.begin(), skyLine.end(), [](auto &lhs, auto &rhs) { return lhs.y < rhs.y; });
-					vector<RectSize> candidate_rects = get_candidate_rects(*bottom_iter, method_1);
-					best_node = find_rect_for_skyline_bottom_left(distance(skyLine.begin(), bottom_iter), candidate_rects, best_rect_index);
-					best_skyline_index = 
-				}
-				else { // 搜索所有skyline
-					for (int i = 0; i < skyLine.size(); ++i) {
-						Rect new_node;
-						int score_1, score_2, rect_index;
-						vector<RectSize> candidate_rects = get_candidate_rects(skyLine[i], method_1);
-						switch (method_2) {
-						case LevelHeuristicSearch::LevelMinHeightFit:
-							new_node = find_rect_for_skyline_min_height(i, candidate_rects, score_1, score_2, rect_index);
-							debug_assert(disjointRects.Disjoint(new_node));
-							break;
-						case LevelHeuristicSearch::LevelMinWasteFit:
-							new_node = find_rect_for_skyline_min_waste(i, candidate_rects, score_1, score_2, rect_index);
-							debug_assert(disjointRects.Disjoint(new_node));
-							break;
-						default:
-							assert(false);
-							break;
-						}
-						if (new_node.height != 0) {
-							if (score_1 < best_score_1 || (score_1 == best_score_1 && score_2 < best_score_2)) {
-								best_node = new_node;
-								best_score_1 = score_1;
-								best_score_2 = score_2;
-								best_skyline_index = i;
-								best_rect_index = rect_index;
-							}
+				for (int i = 0; i < skyLine.size(); ++i) {
+					Rect new_node;
+					int score_1, score_2, rect_index;
+					vector<RectSize> candidate_rects = get_candidate_rects(skyLine[i], method_1);
+					switch (method_2) {
+					case LevelHeuristicSearch::LevelMinHeightFit:
+						new_node = find_rect_for_skyline_min_height(i, candidate_rects, score_1, score_2, rect_index);
+						debug_assert(disjointRects.Disjoint(new_node));
+						break;
+					case LevelHeuristicSearch::LevelMinWasteFit:
+						new_node = find_rect_for_skyline_min_waste(i, candidate_rects, score_1, score_2, rect_index);
+						debug_assert(disjointRects.Disjoint(new_node));
+						break;
+					default:
+						assert(false);
+						break;
+					}
+					if (new_node.height != 0) {
+						if (score_1 < best_score_1 || (score_1 == best_score_1 && score_2 < best_score_2)) {
+							best_node = new_node;
+							best_score_1 = score_1;
+							best_score_2 = score_2;
+							best_skyline_index = i;
+							best_rect_index = rect_index;
 						}
 					}
 				}
 
-				if (best_node.height == 0 || best_rect_index == -1) { return; } // 无解
+				// 没有矩形能放下
+				if (best_rect_index == -1) { return; }
 
 				// 执行放置
 				debug_assert(disjointRects.Disjoint(best_node));
@@ -87,8 +80,63 @@ namespace fbp {
 				AddSkylineLevel(best_skyline_index, best_node);
 				usedSurfaceArea += _rects[best_rect_index].width * _rects[best_rect_index].height;
 				_rects.erase(_rects.begin() + best_rect_index);
-				_group_rects[_rects[best_rect_index].group_id].erase(); // [todo] 删除分组中的矩形，改为指针？
+				// [todo] 删除分组中的矩形，改为指针？
+				_group_rects[_rects[best_rect_index].group_id].erase(find_if(
+					_group_rects[_rects[best_rect_index].group_id].begin(),
+					_group_rects[_rects[best_rect_index].group_id].end(),
+					[this, best_rect_index](RectSize &rect) { return rect.id == _rects[best_rect_index].id; }
+				));
 				dst.push_back(best_node);
+			}
+		}
+
+		void insert_bottom_left(vector<Rect> &dst, LevelGroupSearch method_1) {
+			dst.clear();
+			while (!_rects.empty()) {
+				// [todo] 将skyline按照y坐标排序，每次调用min_element复杂度较高;
+				// 但每次排序复杂度更高
+				auto bottom_skyline_iter = min_element(skyLine.begin(), skyLine.end(), [](auto &lhs, auto &rhs) { return lhs.y < rhs.y; });
+				int best_skyline_index = distance(skyLine.begin(), bottom_skyline_iter);
+				vector<RectSize> candidate_rects = get_candidate_rects(*bottom_skyline_iter, method_1);
+				int best_rect_index = -1;
+				Rect best_node = find_rect_for_skyline_bottom_left(best_skyline_index, candidate_rects, best_rect_index);
+
+				if (best_rect_index == -1) {
+					if (skyLine.size() == 1) { // bin被填满
+						assert(skyLine.front().x == 0 && skyLine.front().y == binHeight && skyLine.front().width == binWidth);
+						return;
+					}
+					else { // 需要填坑
+						if (best_skyline_index == 0) { skyLine[best_skyline_index].y = skyLine[best_skyline_index + 1].y; }
+						else if (best_skyline_index == skyLine.size() - 1) { skyLine[best_skyline_index].y = skyLine[best_skyline_index - 1].y; }
+						else { skyLine[best_skyline_index].y = min(skyLine[best_skyline_index - 1].y, skyLine[best_skyline_index + 1].y); }
+						MergeSkylines();
+					}
+				}
+				else { // 执行放置
+					debug_assert(disjointRects.Disjoint(best_node));
+					debug_run(disjointRects.Add(best_node));
+					if (best_node.x == skyLine[best_skyline_index].x) { // 靠左
+						AddSkylineLevel(best_skyline_index, best_node);
+					}
+					else { // 靠右
+						SkylineNode new_skyline{ best_node.x, best_node.y + best_node.height, best_node.width };
+						assert(new_skyline.x + new_skyline.width <= binWidth);
+						assert(new_skyline.y <= binHeight);
+						skyLine.insert(skyLine.begin() + best_skyline_index + 1, new_skyline);
+						skyLine[best_skyline_index].width -= best_node.width;
+						MergeSkylines();
+					}
+					usedSurfaceArea += _rects[best_rect_index].width * _rects[best_rect_index].height;
+					_rects.erase(_rects.begin() + best_rect_index);
+					// [todo] 删除分组中的矩形，改为指针？
+					_group_rects[_rects[best_rect_index].group_id].erase(find_if(
+						_group_rects[_rects[best_rect_index].group_id].begin(),
+						_group_rects[_rects[best_rect_index].group_id].end(),
+						[this, best_rect_index](RectSize &rect) { return rect.id == _rects[best_rect_index].id; }
+					));
+					dst.push_back(best_node);
+				}
 			}
 		}
 
@@ -187,36 +235,24 @@ namespace fbp {
 			return new_node;
 		}
 
-		/// 论文idea，基于最左/最下和打分策略
-		/// [todo] 未实现(d)(f)->(h)的退化情况
-		// [todo] 这里实现错误，skyline可能变化，应该将填坑部分代码向上提出一层
+		/// 论文idea，基于最下/最左和打分策略
 		Rect find_rect_for_skyline_bottom_left(int skyline_index, const vector<RectSize> &rects, int &best_index) {
-			best_index = -1;
 			int best_socre = -1;
 			Rect new_node;
 			memset(&new_node, 0, sizeof(new_node));
-
-			while (best_socre == -1) {
-				for (auto &rect : rects) {
-					int x, score;
-					for (int rotate = 0; rotate <= 1; ++rotate) {
-						int width = rect.width, height = rect.height;
-						if (rotate) { swap(width, height); }
-						if (score_rect_for_skyline_bottom_left(skyline_index, width, height, x, score)) {
-							if (best_socre < score) {
-								best_socre = score;
-								best_index = rect.id;
-								new_node = { x, skyLine[skyline_index].y, width, height };
-								debug_assert(disjointRects.Disjoint(new_node));
-							}
+			for (auto &rect : rects) {
+				int x, score;
+				for (int rotate = 0; rotate <= 1; ++rotate) {
+					int width = rect.width, height = rect.height;
+					if (rotate) { swap(width, height); }
+					if (score_rect_for_skyline_bottom_left(skyline_index, width, height, x, score)) {
+						if (best_socre < score) {
+							best_socre = score;
+							best_index = rect.id;
+							new_node = { x, skyLine[skyline_index].y, width, height };
+							debug_assert(disjointRects.Disjoint(new_node));
 						}
 					}
-				}
-				if (best_socre == -1) { // 填坑
-					if (skyline_index == 0) { skyLine[skyline_index].y = skyLine[skyline_index + 1].y; }
-					else if (skyline_index == skyLine.size() - 1) { skyLine[skyline_index].y = skyLine[skyline_index - 1].y; }
-					else { skyLine[skyline_index].y = min(skyLine[skyline_index - 1].y, skyLine[skyline_index + 1].y); }
-					MergeSkylines();
 				}
 			}
 			return new_node;
@@ -231,8 +267,10 @@ namespace fbp {
 			int hr;
 		};
 
+		/// 打分策略，[todo] 未实现(d)(f)->(h)的退化情况
 		bool score_rect_for_skyline_bottom_left(int skyline_index, int width, int height, int &x, int &score) {
 			if (width > skyLine.front().width) { return false; }
+			if (skyLine[skyline_index].y + height > binHeight) { return false; }
 
 			SkylineSpace space = skyline_nodo_to_space(skyline_index);
 			if (space.hl >= space.hr) {
@@ -263,12 +301,17 @@ namespace fbp {
 				if (score == 4 || score == 0) { x = skyLine[skyline_index].x + skyLine[skyline_index].width - width; }
 				else { x = skyLine[skyline_index].x; }
 			}
+			if (x + width > binWidth) { return false; }
+
 			return true;
 		}
 
 		SkylineSpace skyline_nodo_to_space(int skyline_index) {
 			int hl, hr;
-			if (skyline_index == 0) {
+			if (skyLine.size() == 1) {
+				hl = hr = binHeight - skyLine[skyline_index].y;
+			}
+			else if (skyline_index == 0) {
 				hl = binHeight - skyLine[skyline_index].y;
 				hr = skyLine[skyline_index + 1].y - skyLine[skyline_index].y;
 			}

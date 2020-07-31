@@ -151,17 +151,24 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="GuillotineBinPack.cpp" />
     <ClCompile Include="Main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="GuillotineBinPack.h" />
+    <ClInclude Include="GuillotineBinPack.hpp" />
     <ClInclude Include="FloorplanBinPack.hpp">
       <SubType>
       </SubType>
     </ClInclude>
     <ClInclude Include="Rect.hpp" />
     <ClInclude Include="SkylineBinPack.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Instance\GSRCbench\HARD\n10.blocks" />
+    <None Include="..\Instance\GSRCbench\HARD\n10.nets" />
+    <None Include="..\Instance\GSRCbench\HARD\n10.pl" />
+    <None Include="..\Instance\MCNCbench\HARD\ami33.blocks" />
+    <None Include="..\Instance\MCNCbench\HARD\ami33.nets" />
+    <None Include="..\Instance\MCNCbench\HARD\ami33.pl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

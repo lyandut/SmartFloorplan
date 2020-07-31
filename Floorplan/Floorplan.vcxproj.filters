@@ -9,29 +9,49 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;ipp;xsd</Extensions>
     </Filter>
+    <Filter Include="Data">
+      <UniqueIdentifier>{ca37a24e-0e0e-419a-a0b4-c75eb74900b2}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Algorithm">
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="GuillotineBinPack.cpp">
-      <Filter>Lib</Filter>
-    </ClCompile>
     <ClCompile Include="Main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="GuillotineBinPack.h">
-      <Filter>Lib</Filter>
-    </ClInclude>
-    <ClInclude Include="Rect.hpp">
-      <Filter>Lib</Filter>
-    </ClInclude>
     <ClInclude Include="SkylineBinPack.hpp">
       <Filter>Lib</Filter>
     </ClInclude>
     <ClInclude Include="FloorplanBinPack.hpp">
       <Filter>Algorithm</Filter>
     </ClInclude>
+    <ClInclude Include="GuillotineBinPack.hpp">
+      <Filter>Lib</Filter>
+    </ClInclude>
+    <ClInclude Include="Rect.hpp">
+      <Filter>Data</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Instance\MCNCbench\HARD\ami33.blocks">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="..\Instance\MCNCbench\HARD\ami33.nets">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="..\Instance\MCNCbench\HARD\ami33.pl">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="..\Instance\GSRCbench\HARD\n10.blocks">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="..\Instance\GSRCbench\HARD\n10.nets">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="..\Instance\GSRCbench\HARD\n10.pl">
+      <Filter>资源文件</Filter>
+    </None>
   </ItemGroup>
 </Project>

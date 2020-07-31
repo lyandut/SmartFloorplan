@@ -17,7 +17,7 @@
 #include <cmath>
 
 #include "Rect.hpp"
-#include "GuillotineBinPack.h"
+#include "GuillotineBinPack.hpp"
 
 namespace rbp {
 
@@ -77,7 +77,7 @@ namespace rbp {
 				int bestSkylineIndex = -1;
 				int bestRectIndex = -1;
 
-				for (size_t i = 0; i < rects.size(); ++i) {
+				for (int i = 0; i < rects.size(); ++i) {
 					Rect newNode;
 					int score1, score2, skylineIndex;
 					switch (method) {
@@ -104,7 +104,8 @@ namespace rbp {
 					}
 				}
 
-				if (bestRectIndex == -1) return; // 没有合适的矩形放置
+				// 没有矩形能放下
+				if (bestRectIndex == -1) return;
 
 				// 执行放置
 				debug_assert(disjointRects.Disjoint(bestNode));
@@ -153,7 +154,7 @@ namespace rbp {
 			bestIndex = -1;
 			Rect newNode;
 			memset(&newNode, 0, sizeof(newNode));
-			for (size_t i = 0; i < skyLine.size(); ++i) {
+			for (int i = 0; i < skyLine.size(); ++i) {
 				int y; // 矩形放置纵坐标，引用传递
 				for (int rotate = 0; rotate <= 1; ++rotate) {
 					if (rotate) { swap(width, height); } // 旋转
@@ -181,7 +182,7 @@ namespace rbp {
 			bestIndex = -1;
 			Rect newNode;
 			memset(&newNode, 0, sizeof(newNode));
-			for (size_t i = 0; i < skyLine.size(); ++i) {
+			for (int i = 0; i < skyLine.size(); ++i) {
 				int y, wastedArea; // 引用传递
 				for (int rotate = 0; rotate <= 1; ++rotate) {
 					if (rotate) { swap(width, height); } // 旋转
@@ -231,7 +232,7 @@ namespace rbp {
 			int wastedArea = 0;
 			const int rectLeft = skyLine[skylineIndex].x;
 			const int rectRight = rectLeft + width;
-			for (size_t i = skylineIndex; i < skyLine.size() && skyLine[i].x < rectRight; ++i) {
+			for (int i = skylineIndex; i < skyLine.size() && skyLine[i].x < rectRight; ++i) {
 				if (skyLine[i].x >= rectRight || skyLine[i].x + skyLine[i].width <= rectLeft) { break; }
 
 				int leftSide = skyLine[i].x;
@@ -242,7 +243,7 @@ namespace rbp {
 			return wastedArea;
 		}
 
-		/// 更新skyline
+		/// 更新skyline，仅支持靠skyline左侧放置
 		void AddSkylineLevel(int skylineIndex, const Rect &rect) {
 			if (useWasteMap) { AddWasteMapArea(skylineIndex, rect.width, rect.height, rect.y); }
 
@@ -251,7 +252,7 @@ namespace rbp {
 			assert(newNode.y <= binHeight);
 			skyLine.insert(skyLine.begin() + skylineIndex, newNode);
 
-			for (size_t i = skylineIndex + 1; i < skyLine.size(); ++i) {
+			for (int i = skylineIndex + 1; i < skyLine.size(); ++i) {
 				assert(skyLine[i - 1].x <= skyLine[i].x);
 				if (skyLine[i].x < skyLine[i - 1].x + skyLine[i - 1].width) {
 					int shrink = skyLine[i - 1].x + skyLine[i - 1].width - skyLine[i].x;
@@ -273,7 +274,7 @@ namespace rbp {
 		void AddWasteMapArea(int skylineIndex, int width, int height, int y) {
 			const int rectLeft = skyLine[skylineIndex].x;
 			const int rectRight = rectLeft + width;
-			for (size_t i = skylineIndex; i < skyLine.size() && skyLine[i].x < rectRight; ++i) {
+			for (int i = skylineIndex; i < skyLine.size() && skyLine[i].x < rectRight; ++i) {
 				if (skyLine[i].x >= rectRight || skyLine[i].x + skyLine[i].width <= rectLeft) { break; }
 
 				int leftSide = skyLine[i].x;
@@ -287,7 +288,7 @@ namespace rbp {
 
 		/// 合并同一level的skyline节点.
 		void MergeSkylines() {
-			for (size_t i = 0; i < skyLine.size() - 1; ++i) {
+			for (int i = 0; i < skyLine.size() - 1; ++i) {
 				if (skyLine[i].y == skyLine[i + 1].y) {
 					skyLine[i].width += skyLine[i + 1].width;
 					skyLine.erase(skyLine.begin() + i + 1);
@@ -340,7 +341,7 @@ namespace rbp {
 		bool useWasteMap;
 		GuillotineBinPack wasteMap;
 
-		debug_run(DisjointRectCollection disjointRects;)
+		debug_run(DisjointRectCollection disjointRects;);
 	};
 
 }
