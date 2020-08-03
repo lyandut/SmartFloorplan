@@ -104,13 +104,16 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PostBuildEvent>
+      <Command>copy $(TargetPath) $(SolutionDir)Deploy\$(TargetFileName)</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -140,7 +143,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
     </ClCompile>
     <Link>
@@ -149,6 +152,9 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PostBuildEvent>
+      <Command>copy $(TargetPath) $(SolutionDir)Deploy\$(TargetFileName)</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp" />
@@ -159,16 +165,24 @@
       <SubType>
       </SubType>
     </ClInclude>
+    <ClInclude Include="Instance.hpp">
+      <SubType>
+      </SubType>
+    </ClInclude>
     <ClInclude Include="Rect.hpp" />
     <ClInclude Include="SkylineBinPack.hpp" />
+    <ClInclude Include="Utils.hpp">
+      <SubType>
+      </SubType>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\Instance\GSRCbench\HARD\n10.blocks" />
-    <None Include="..\Instance\GSRCbench\HARD\n10.nets" />
-    <None Include="..\Instance\GSRCbench\HARD\n10.pl" />
-    <None Include="..\Instance\MCNCbench\HARD\ami33.blocks" />
-    <None Include="..\Instance\MCNCbench\HARD\ami33.nets" />
-    <None Include="..\Instance\MCNCbench\HARD\ami33.pl" />
+    <None Include="..\Deploy\Instance\GSRCbench\HARD\n10.blocks" />
+    <None Include="..\Deploy\Instance\GSRCbench\HARD\n10.nets" />
+    <None Include="..\Deploy\Instance\GSRCbench\HARD\n10.pl" />
+    <None Include="..\Deploy\Instance\MCNCbench\HARD\ami33.blocks" />
+    <None Include="..\Deploy\Instance\MCNCbench\HARD\ami33.nets" />
+    <None Include="..\Deploy\Instance\MCNCbench\HARD\ami33.pl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

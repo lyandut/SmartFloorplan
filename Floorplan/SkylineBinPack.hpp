@@ -68,7 +68,7 @@ namespace rbp {
 		/// @param rects 源矩形列表
 		/// @param dst 目的矩形列表
 		/// @param method 打包规则.
-		void Insert(std::vector<RectSize> &rects, std::vector<Rect> &dst, LevelChoiceHeuristic method) {
+		void Insert(std::vector<Rect> &rects, std::vector<Rect> &dst, LevelChoiceHeuristic method) {
 			dst.clear();
 			while (!rects.empty()) { // 每次迭代放置放置一个矩形
 				Rect bestNode;
@@ -280,7 +280,11 @@ namespace rbp {
 				int leftSide = skyLine[i].x;
 				int rightSide = min(rectRight, leftSide + skyLine[i].width);
 				assert(y >= skyLine[i].y);
-				Rect waste{ leftSide, skyLine[i].y, rightSide - leftSide, y - skyLine[i].y };
+				Rect waste;
+				waste.x = leftSide;
+				waste.y = skyLine[i].y;
+				waste.width = rightSide - leftSide;
+				waste.height = y - skyLine[i].y;
 				debug_assert(disjointRects.Disjoint(waste));
 				wasteMap.GetFreeRectangles().push_back(waste);
 			}
