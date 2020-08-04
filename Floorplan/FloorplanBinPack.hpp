@@ -93,27 +93,30 @@ namespace fbp {
 		void insert_bottom_left_score(vector<Rect> &dst, LevelGroupSearch method_1) {
 			dst.clear();
 			while (!_rects.empty()) {
-				// [todo] 将skyline按照y坐标排序，每次调用min_element复杂度较高;
-				// 但每次排序复杂度更高
-				auto bottom_skyline_iter = min_element(skyLine.begin(), skyLine.end(), [](auto &lhs, auto &rhs) { return lhs.y < rhs.y; });
+				auto bottom_skyline_iter = min_element(skyLine.begin(), skyLine.end(),
+					[](auto &lhs, auto &rhs) { return lhs.y < rhs.y; });
 				int best_skyline_index = distance(skyLine.begin(), bottom_skyline_iter);
 				vector<Rect> candidate_rects = get_candidate_rects(*bottom_skyline_iter, method_1);
-				int best_rect_index = -1;
-				Rect best_node = find_rect_for_skyline_bottom_left(best_skyline_index, candidate_rects, best_rect_index);
+				auto minwidth_rect_iter = min_element(candidate_rects.begin(), candidate_rects.end(),
+					[](auto &lhs, auto &rhs) { return lhs.width < rhs.width; });
+				auto minheight_rect_iter = min_element(candidate_rects.begin(), candidate_rects.end(),
+					[](auto &lhs, auto &rhs) { return lhs.height < rhs.height; });
+				int min_width = min(minwidth_rect_iter->width, minheight_rect_iter->height);
 
-				if (best_rect_index == -1) {
-					if (skyLine.size() == 1) { // bin被填满
-						assert(skyLine.front().x == 0 && skyLine.front().y == binHeight && skyLine.front().width == binWidth);
-						return;
-					}
-					else { // 需要填坑
-						if (best_skyline_index == 0) { skyLine[best_skyline_index].y = skyLine[best_skyline_index + 1].y; }
-						else if (best_skyline_index == skyLine.size() - 1) { skyLine[best_skyline_index].y = skyLine[best_skyline_index - 1].y; }
-						else { skyLine[best_skyline_index].y = min(skyLine[best_skyline_index - 1].y, skyLine[best_skyline_index + 1].y); }
-						MergeSkylines();
-					}
+				if (bottom_skyline_iter->width < min_width) { // 最小宽度不能满足，需要填坑
+					if (best_skyline_index == 0) { skyLine[best_skyline_index].y = skyLine[best_skyline_index + 1].y; }
+					else if (best_skyline_index == skyLine.size() - 1) { skyLine[best_skyline_index].y = skyLine[best_skyline_index - 1].y; }
+					else { skyLine[best_skyline_index].y = min(skyLine[best_skyline_index - 1].y, skyLine[best_skyline_index + 1].y); }
+					MergeSkylines();
 				}
-				else { // 执行放置
+				else { 
+					int best_rect_index = -1;
+					Rect best_node = find_rect_for_skyline_bottom_left(best_skyline_index, candidate_rects, best_rect_index);
+
+					// 没有矩形能放下
+					if (best_rect_index == -1) { return; }
+
+					// 执行放置
 					debug_assert(disjointRects.Disjoint(best_node));
 					debug_run(disjointRects.Add(best_node));
 					if (best_node.x == skyLine[best_skyline_index].x) { // 靠左
@@ -237,7 +240,7 @@ namespace fbp {
 
 		/// 论文idea，基于最下/最左和打分策略
 		Rect find_rect_for_skyline_bottom_left(int skyline_index, const vector<Rect> &rects, int &best_index) {
-			int best_socre = -1;
+			int best_score = -1;
 			Rect new_node;
 			memset(&new_node, 0, sizeof(new_node));
 			for (int i = 0; i < rects.size(); ++i) {
@@ -246,8 +249,8 @@ namespace fbp {
 					int width = rects[i].width, height = rects[i].height;
 					if (rotate) { swap(width, height); }
 					if (score_rect_for_skyline_bottom_left(skyline_index, width, height, x, score)) {
-						if (best_socre < score) {
-							best_socre = score;
+						if (best_score < score) {
+							best_score = score;
 							best_index = i;
 							new_node = { rects[i].id, rects[i].group_id, x, skyLine[skyline_index].y, width, height };
 							debug_assert(disjointRects.Disjoint(new_node));
@@ -255,6 +258,11 @@ namespace fbp {
 					}
 				}
 			}
+			// [todo] 未实现(d)(f)->(h)的退化情况
+			if (best_score == 4) {}
+			if (best_score == 2) {}
+			if (best_score == 0) {}
+
 			return new_node;
 		}
 
@@ -267,9 +275,9 @@ namespace fbp {
 			int hr;
 		};
 
-		/// 打分策略，[todo] 未实现(d)(f)->(h)的退化情况 && 有bug无法放置第一块矩形
+		/// 打分策略
 		bool score_rect_for_skyline_bottom_left(int skyline_index, int width, int height, int &x, int &score) {
-			if (width > skyLine.front().width) { return false; }
+			if (width > skyLine[skyline_index].width) { return false; }
 			if (skyLine[skyline_index].y + height > binHeight) { return false; }
 
 			SkylineSpace space = skyline_nodo_to_space(skyline_index);
@@ -281,7 +289,7 @@ namespace fbp {
 				else if (width == space.width && height < space.hl && height > space.hr) { score = 3; }
 				else if (width < space.width && height == space.hr) { score = 2; } // 靠右
 				else if (width == space.width && height < space.hr) { score = 1; }
-				else if (width < space.width && height > space.hl) { score = 0; }
+				else if (width < space.width && height != space.hl) { score = 0; }
 				else { return false; }
 
 				if (score == 2) { x = skyLine[skyline_index].x + skyLine[skyline_index].width - width; }
@@ -295,7 +303,7 @@ namespace fbp {
 				else if (width == space.width && height < space.hr && height > space.hl) { score = 3; }
 				else if (width < space.width && height == space.hl) { score = 2; }
 				else if (width == space.width && height < space.hl) { score = 1; }
-				else if (width < space.width && height > space.hr) { score = 0; } // 靠右
+				else if (width < space.width && height != space.hr) { score = 0; } // 靠右
 				else { return false; }
 
 				if (score == 4 || score == 0) { x = skyLine[skyline_index].x + skyLine[skyline_index].width - width; }

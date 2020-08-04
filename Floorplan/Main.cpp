@@ -4,7 +4,7 @@
 
 void test_floorplan_bin_pack(Instance &ins) {
 
-	float dead_ratio = 0.14f;
+	float dead_ratio = 0.1452f;
 	int bin_width = sqrt(ins.get_total_area() * (1 + dead_ratio));
 	int bin_height = bin_width;
 
@@ -12,12 +12,12 @@ void test_floorplan_bin_pack(Instance &ins) {
 	vector<rbp::Rect> src = ins.get_rects();
 	vector<rbp::Rect> dst;
 	dst.reserve(src.size());
-	fbp::FloorplanBinPack fbp_solver(src, 3000, 16000);
+	fbp::FloorplanBinPack fbp_solver(src, bin_width, bin_height);
 
 	printf("Perform the packing...\n");
-	fbp_solver.insert_greedy_fit(dst, fbp::FloorplanBinPack::LevelSelfishly, fbp::FloorplanBinPack::LevelMinHeightFit);
+	//fbp_solver.insert_greedy_fit(dst, fbp::FloorplanBinPack::LevelSelfishly, fbp::FloorplanBinPack::LevelMinHeightFit);
 	//fbp_solver.insert_greedy_fit(dst, fbp::FloorplanBinPack::LevelSelfishly, fbp::FloorplanBinPack::LevelMinWasteFit);
-	//fbp_solver.insert_bottom_left_score(dst, fbp::FloorplanBinPack::LevelGroupSearch::LevelSelfishly);
+	fbp_solver.insert_bottom_left_score(dst, fbp::FloorplanBinPack::LevelGroupSearch::LevelSelfishly);
 
 	// Test success or failure.
 	if (src.empty()) { printf("Successful! Occupancy Ratio: %.2f%%\n", fbp_solver.Occupancy()*100.f); }
