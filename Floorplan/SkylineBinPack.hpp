@@ -60,8 +60,8 @@ namespace rbp {
 
 		/// 定义启发式打包规则.
 		enum LevelChoiceHeuristic {
-			LevelBottomLeft,   // 最小高度
-			LevelMinWasteFit   // 最小浪费
+			LevelMinHeightFit,   // 最小高度
+			LevelMinWasteFit     // 最小浪费
 		};
 
 		/// 将一批矩形放置到bin中，矩形可能旋转
@@ -81,8 +81,8 @@ namespace rbp {
 					Rect newNode;
 					int score1, score2, skylineIndex;
 					switch (method) {
-					case LevelChoiceHeuristic::LevelBottomLeft:
-						newNode = FindPositionForNewNodeBottomLeft(rects[i].width, rects[i].height, score1, score2, skylineIndex);
+					case LevelChoiceHeuristic::LevelMinHeightFit:
+						newNode = FindPositionForNewNodeMinHeight(rects[i].width, rects[i].height, score1, score2, skylineIndex);
 						debug_assert(disjointRects.Disjoint(newNode));
 						break;
 					case LevelChoiceHeuristic::LevelMinWasteFit:
@@ -132,7 +132,7 @@ namespace rbp {
 
 			// waste map中不能放置
 			switch (method) {
-			case LevelChoiceHeuristic::LevelBottomLeft:
+			case LevelChoiceHeuristic::LevelMinHeightFit:
 				return InsertMinHeight(width, height);
 			case LevelChoiceHeuristic::LevelMinWasteFit:
 				return InsertMinWaste(width, height);
@@ -148,7 +148,7 @@ namespace rbp {
 
 	protected:
 		/// 基于最小高度，遍历skyline选择最佳位置
-		Rect FindPositionForNewNodeBottomLeft(int width, int height, int &bestHeight, int &bestWidth, int &bestIndex) const {
+		Rect FindPositionForNewNodeMinHeight(int width, int height, int &bestHeight, int &bestWidth, int &bestIndex) const {
 			bestHeight = std::numeric_limits<int>::max();
 			bestWidth = std::numeric_limits<int>::max(); // 高度相同选择skyline宽度较小的
 			bestIndex = -1;
@@ -175,7 +175,7 @@ namespace rbp {
 			return newNode;
 		}
 
-		/// 基于“最小浪费”，遍历skyline选择最佳位置
+		/// 基于最小浪费，遍历skyline选择最佳位置
 		Rect FindPositionForNewNodeMinWaste(int width, int height, int &bestWastedArea, int &bestHeight, int &bestIndex) const {
 			bestWastedArea = std::numeric_limits<int>::max();
 			bestHeight = std::numeric_limits<int>::max(); // 浪费面积相同选择高度较小的
@@ -303,7 +303,7 @@ namespace rbp {
 
 		Rect InsertMinHeight(int width, int height) {
 			int bestHeight, bestWidth, bestIndex;
-			Rect newNode = FindPositionForNewNodeBottomLeft(width, height, bestHeight, bestWidth, bestIndex);
+			Rect newNode = FindPositionForNewNodeMinHeight(width, height, bestHeight, bestWidth, bestIndex);
 			if (bestIndex != -1) {
 				debug_assert(disjointRects.Disjoint(newNode));
 				debug_run(disjointRects.Add(newNode));

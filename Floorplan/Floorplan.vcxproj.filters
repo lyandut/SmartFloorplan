@@ -38,17 +38,11 @@
     <ClInclude Include="Utils.hpp">
       <Filter>Utils</Filter>
     </ClInclude>
+    <ClInclude Include="QAPCluster.hpp">
+      <Filter>Algorithm</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\Deploy\Instance\GSRCbench\HARD\n10.blocks">
-      <Filter>资源文件</Filter>
-    </None>
-    <None Include="..\Deploy\Instance\GSRCbench\HARD\n10.nets">
-      <Filter>资源文件</Filter>
-    </None>
-    <None Include="..\Deploy\Instance\GSRCbench\HARD\n10.pl">
-      <Filter>资源文件</Filter>
-    </None>
     <None Include="..\Deploy\Instance\MCNCbench\HARD\ami33.blocks">
       <Filter>资源文件</Filter>
     </None>
@@ -56,6 +50,15 @@
       <Filter>资源文件</Filter>
     </None>
     <None Include="..\Deploy\Instance\MCNCbench\HARD\ami33.pl">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="..\Deploy\Instance\GSRCbench\HARD\n10.blocks">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="..\Deploy\Instance\GSRCbench\HARD\n10.nets">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="..\Deploy\Instance\GSRCbench\HARD\n10.pl">
       <Filter>资源文件</Filter>
     </None>
   </ItemGroup>

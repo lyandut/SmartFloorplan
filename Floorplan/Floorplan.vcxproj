@@ -106,10 +106,13 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>..\Lib\gurobi\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>..\Lib\gurobi\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>gurobi_c++mdd2017.lib;gurobi_c++mtd2017.lib;gurobi80.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>copy $(TargetPath) $(SolutionDir)Deploy\$(TargetFileName)</Command>
@@ -145,12 +148,15 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>..\Lib\gurobi\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>..\Lib\gurobi\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>gurobi_c++md2017.lib;gurobi_c++mt2017.lib;gurobi80.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>copy $(TargetPath) $(SolutionDir)Deploy\$(TargetFileName)</Command>
@@ -169,6 +175,7 @@
       <SubType>
       </SubType>
     </ClInclude>
+    <ClInclude Include="QAPCluster.hpp" />
     <ClInclude Include="Rect.hpp" />
     <ClInclude Include="SkylineBinPack.hpp" />
     <ClInclude Include="Utils.hpp">
@@ -183,6 +190,11 @@
     <None Include="..\Deploy\Instance\MCNCbench\HARD\ami33.blocks" />
     <None Include="..\Deploy\Instance\MCNCbench\HARD\ami33.nets" />
     <None Include="..\Deploy\Instance\MCNCbench\HARD\ami33.pl" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\QAPSolver\QAPSolver.vcxproj">
+      <Project>{017c77b8-d3e7-436b-87b5-3a58c9bc3392}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

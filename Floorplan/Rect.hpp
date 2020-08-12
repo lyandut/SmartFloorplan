@@ -25,7 +25,7 @@ namespace rbp {
 	{
 		// used for floorplan.
 		int id;
-		int group_id;
+		int gid;
 		
 		int x;
 		int y;

@@ -61,8 +61,8 @@ struct Terminal {
 
 struct Net {
 	int degree;
-	list<int> block_list;
-	list<int> terminal_list;
+	vector<int> block_list;
+	vector<int> terminal_list;
 };
 
 class Instance {
@@ -75,9 +75,6 @@ public:
 		read_pl();
 	}
 
-	/// 将算例预处理成QAP
-	void preprocess_to_qap() {}
-
 	/// 待打包矩形列表
 	vector<rbp::Rect> get_rects() const {
 		vector<rbp::Rect> rects;
@@ -86,12 +83,14 @@ public:
 			rects.push_back({ i, 0,
 				_blocks[i].x_coordinate, _blocks[i].y_coordinate,
 				_blocks[i].width, _blocks[i].height });
-
 		}
 		return rects;
 	}
 
+	int get_block_num() const { return _block_num; }
+	int get_block_area(int i) const { return _blocks[i].area; }
 	int get_total_area() const { return _total_area; }
+	const vector<Net> & get_net_list() const { return _nets; }
 
 private:
 	/// read .blocks file.
