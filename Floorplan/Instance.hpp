@@ -25,9 +25,9 @@ public:
 	string blocks_path() { return instance_dir() + benchmark_dir() + type_dir() + _ins_name + ".blocks"; }
 	string nets_path() { return instance_dir() + benchmark_dir() + type_dir() + _ins_name + ".nets"; }
 	string pl_path() { return instance_dir() + benchmark_dir() + type_dir() + _ins_name + ".pl"; }
-
 	string solution_path() { return solution_dir() + _ins_name; }
 	string solution_path_with_time() { return  solution_dir() + _ins_name + "." + utils::Date::to_detail_str(); }
+
 private:
 	static string instance_dir() { return "Instance/"; }
 	static string solution_dir() { return "Solution/"; }

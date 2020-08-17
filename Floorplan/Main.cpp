@@ -36,8 +36,8 @@ void test_floorplan_bin_pack() {
 // void test_qap() { qap::test_bls(); }
 
 void test_cluster() {
-	//Environment env("GSRC", "H", "n10");
-	Environment env("MCNC", "H", "ami49");
+	Environment env("GSRC", "H", "n300");
+	//Environment env("MCNC", "H", "ami49");
 	Instance ins(env);
 	ins.read_instance();
 
@@ -46,7 +46,7 @@ void test_cluster() {
 	int bin_height = bin_width;
 
 	QAPCluster cluster(ins);
-	cluster.gurobi_cluster(5, bin_width * bin_height);
+	cluster.cal_flow_matrix(25, bin_width * bin_height);
 }
 
 int main(int argc, char **argv) {

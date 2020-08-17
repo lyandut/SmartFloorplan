@@ -4,6 +4,7 @@
 //
 #pragma once
 
+#include <cmath>
 #include <gurobi_c++.h>
 #include "Instance.hpp"
 
@@ -13,15 +14,28 @@ class QAPCluster {
 public:
 	QAPCluster(const Instance &ins) : _ins(ins) { build_graph(LevelConnection::LevelDirect); }
 
-	/// 使用数学模型求解分组, P：分组数目
-	void gurobi_cluster(int group_num, int bin_area) {
+	enum LevelConnection {
+		LevelDirect,    // 仅考虑直连的边，非直连的边权重为0
+		LevelIndirect   // 考虑非直连的边，非直连的边权重为 `1/最短路跳数`
+	};
+
+	enum LevelDistance {
+		EuclideanDis,   // 欧几里得距离
+		ManhattanDis,   // 曼哈顿距离
+		ChebyshevDis,   // 切比雪夫距离
+		EuclideanSqrDis // 欧式平方距离
+	};
+
+	/// 计算QAP的flow matrix
+	/// 使用数学模型求解分组问题; [todo]使用局部搜索替换gurobi.
+	void cal_flow_matrix(int group_num, int bin_area) {
 		try {
 			// Initialize environment & empty model
 			GRBEnv env = GRBEnv(true);
-			//env.set("LogFile", "qap_cluster.log");
+			env.set("LogFile", "qap_cluster.log");  // [todo] 这里关闭cmd输出
 			env.start();
 			GRBModel gm = GRBModel(env);
-			gm.set(GRB_DoubleParam_TimeLimit, 60.0);
+			//gm.set(GRB_DoubleParam_TimeLimit, 60.0 * 10);
 
 			// Decision Variables
 			// x_ip:  block_i是否被分到group_p.
@@ -60,8 +74,8 @@ public:
 					for (int j = 0; j < _graph.size(); ++j) {
 						if (i == j) { continue; }
 						GRBLinExpr expr = x[i][p] + x[j][p] - 2 * y[i][j][p];
-						gm.addConstr(expr >= 0); // 最大化目标可以仅保留该条约束
-						gm.addConstr(expr <= 1);
+						gm.addConstr(expr >= 0);
+						//gm.addConstr(expr <= 1); // 提速：最大化目标可以删除该条约束
 					}
 				}
 			}
@@ -93,6 +107,7 @@ public:
 				for (int i = 0; i < x.size(); ++i) {
 					for (int p = 0; p < x[i].size(); ++p) {
 						if (x[i][p].get(GRB_DoubleAttr_X)) {
+							// [todo] 这里生成flow matrix
 							std::cout << i << " is in group " << p << std::endl;
 						}
 					}
@@ -116,12 +131,28 @@ public:
 		}
 	}
 
-private:
-	enum LevelConnection {
-		LevelDirect,    // 仅考虑直连的边，非直连的边权重为0
-		LevelIndirect   // 考虑非直连的边，非直连的边权重为 `1/最短路跳数`
-	};
+	/// 计算QAP的distance matrix
+	vector<vector<int>> cal_distance_matrix(int dimension, LevelDistance method) {
+		int node_num = dimension * dimension;
+		vector<pair<int, int>> nodes(node_num);
+		for (int x = 0; x < dimension; ++x) {
+			for (int y = 0; y < dimension; ++y) {
+				nodes[x * dimension + y].first = x;
+				nodes[x * dimension + y].second = y;
+			}
+		}
+		vector<vector<int>> distance_matrix(node_num, vector<int>(node_num, 0));
+		for (int i = 0; i < node_num; ++i) {
+			for (int j = i + 1; j < node_num; ++j) {
+				distance_matrix[i][j] = cal_distance(
+					nodes[i].first, nodes[i].second, nodes[j].first, nodes[j].second, method);
+				distance_matrix[j][i] = distance_matrix[i][j];
+			}
+		}
+		return distance_matrix;
+	}
 
+private:
 	/// 结合net_list还原出图
 	void build_graph(LevelConnection method) {
 		int node_num = _ins.get_block_num();  // [todo] 需要将terminal也加入图中
@@ -140,6 +171,28 @@ private:
 
 		// [todo] 考虑非直连的边，需要结合最短路径算法求跳数
 		if (method == LevelConnection::LevelIndirect) {}
+	}
+
+	int cal_distance(int x1, int y1, int x2, int y2, LevelDistance method) {
+		int distance = 0;
+		switch (method) {
+		case LevelDistance::EuclideanDis:
+			distance = sqrt(pow(x1 - x2, 2) + pow(y1 - y2, 2));
+			break;
+		case LevelDistance::ManhattanDis:
+			distance = abs(x1 - x2) + abs(y1 - y2);
+			break;
+		case LevelDistance::ChebyshevDis:
+			distance = max(abs(x1 - x2), abs(y1 - y2));
+			break;
+		case LevelDistance::EuclideanSqrDis:
+			distance = pow(x1 - x2, 2) + pow(y1 - y2, 2);
+			break;
+		default:
+			assert(false);
+			break;
+		}
+		return distance;
 	}
 
 private:

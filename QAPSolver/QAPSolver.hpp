@@ -381,28 +381,6 @@ void load_problem_from_datfile(int &n, type_matrix &a, type_matrix &b, long & be
 		for (int j = 1; j <= n; j = j + 1)
 			ifs >> b[i][j];
 }
-void load_problem_from_(int &n, type_matrix &a, type_matrix &b, long & best_objective)
-{
-	ifstream ifs("Instance/qapdata/tai20a.dat");
-	if (!ifs.is_open()) { return; }
-
-	best_objective = 703482;
-	ifs >> n;
-	a = new long*[n + 1];
-	b = new long*[n + 1];
-	for (int i = 1; i <= n; i = i + 1)
-	{
-		a[i] = new long[n + 1];
-		b[i] = new long[n + 1];
-	}
-
-	for (int i = 1; i <= n; i = i + 1)
-		for (int j = 1; j <= n; j = j + 1)
-			ifs >> a[i][j];
-	for (int i = 1; i <= n; i = i + 1)
-		for (int j = 1; j <= n; j = j + 1)
-			ifs >> b[i][j];
-}
 
 int n;                    // problem size
 type_matrix a, b;         // flows and distances matrices
