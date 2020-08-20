@@ -30,14 +30,7 @@
  GCC does provides these definitions in stdint.h, but it may require some
  modifications on other architectures.
 --------------------------------------------------------------------------*/
-
-#define METIS_BUILD_64BIT  1
-
-#if METIS_BUILD_64BIT
-    #define IDXTYPEWIDTH 64
-#else
-    #define IDXTYPEWIDTH 32
-#endif 
+#define IDXTYPEWIDTH 32
 
 
 /*--------------------------------------------------------------------------

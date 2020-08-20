@@ -46,7 +46,7 @@ void test_cluster() {
 	int bin_height = bin_width;
 
 	QAPCluster cluster(ins);
-	cluster.cal_flow_matrix(25, bin_width * bin_height);
+	cluster.cal_flow_matrix(5);
 }
 
 int main(int argc, char **argv) {
@@ -56,6 +56,7 @@ int main(int argc, char **argv) {
 	//test_qap();
 
 	test_cluster();
+
 
 	system("pause");
 	return 0;

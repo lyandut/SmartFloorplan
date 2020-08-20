@@ -5,15 +5,13 @@
 #pragma once
 
 #include <cmath>
+#include <metis.h>
 #include <gurobi_c++.h>
 #include "Instance.hpp"
-
 
 /// 将算例预处理成QAP算例
 class QAPCluster {
 public:
-	QAPCluster(const Instance &ins) : _ins(ins) { build_graph(LevelConnection::LevelDirect); }
-
 	enum LevelConnection {
 		LevelDirect,    // 仅考虑直连的边，非直连的边权重为0
 		LevelIndirect   // 考虑非直连的边，非直连的边权重为 `1/最短路跳数`
@@ -26,9 +24,101 @@ public:
 		EuclideanSqrDis // 欧式平方距离
 	};
 
+	QAPCluster(const Instance &ins) : _ins(ins) { build_graph(LevelConnection::LevelDirect); }
+
 	/// 计算QAP的flow matrix
-	/// 使用数学模型求解分组问题; [todo]使用局部搜索替换gurobi.
-	void cal_flow_matrix(int group_num, int bin_area) {
+	vector<vector<int>> cal_flow_matrix(int node_num) {
+		vector<vector<int>> flow_matrix(node_num, vector<int>(node_num, 0));
+		//gurobi_cluster(flow_matrix, node_num, bin_area);
+		metis_cluster(flow_matrix, node_num, METIS_PartGraphKway);
+		return flow_matrix;
+	}
+
+	/// 计算QAP的distance matrix
+	vector<vector<int>> cal_distance_matrix(int dimension, LevelDistance method) {
+		int node_num = dimension * dimension;
+		vector<pair<int, int>> nodes(node_num);
+		for (int x = 0; x < dimension; ++x) {
+			for (int y = 0; y < dimension; ++y) {
+				nodes[x * dimension + y].first = x;
+				nodes[x * dimension + y].second = y;
+			}
+		}
+		vector<vector<int>> distance_matrix(node_num, vector<int>(node_num, 0));
+		for (int i = 0; i < node_num; ++i) {
+			for (int j = i + 1; j < node_num; ++j) {
+				distance_matrix[i][j] = cal_distance(
+					nodes[i].first, nodes[i].second, nodes[j].first, nodes[j].second, method);
+				distance_matrix[j][i] = distance_matrix[i][j];
+			}
+		}
+		return distance_matrix;
+	}
+
+private:
+	/// 结合net_list还原出图
+	/// [todo] 需要将terminal也加入图中
+	/// [todo] 考虑非直连的边，需要结合最短路径算法求跳数
+	void build_graph(LevelConnection method) {
+		_graph.resize(_ins.get_block_num(), vector<int>(_ins.get_block_num(), 0));
+		for (auto &net : _ins.get_net_list()) {
+			for (int i = 0; i < net.block_list.size(); ++i) {
+				for (int j = i + 1; j < net.block_list.size(); ++j) {
+					int a = net.block_list[i];
+					int b = net.block_list[j];
+					_graph[a][b] += 1;
+					_graph[b][a] += 1;
+				}
+			}
+		}
+
+		if (method == LevelConnection::LevelIndirect) {}
+	}
+
+	/// 邻接矩阵转压缩图（CSR）
+	void transform_graph_2_csr(vector<idx_t> &xadj, vector<idx_t> &adjncy, vector<idx_t> &adjwgt) {
+		xadj.reserve(_graph.size() + 1);
+		adjncy.reserve(_graph.size() * _graph.size());
+		adjwgt.reserve(_graph.size() * _graph.size());
+		for (int i = 0; i < _graph.size(); ++i) {
+			xadj.push_back(adjncy.size());
+			for (int j = 0; j < _graph.size(); ++j) {
+				if (i == j) { continue; }
+				if (_graph[i][j] >= 1) {
+					adjncy.push_back(j);
+					adjwgt.push_back(_graph[i][j]);
+				}
+			}
+		}
+		xadj.push_back(adjncy.size());
+	}
+
+	/// metis求解分组问题
+	void metis_cluster(vector<vector<int>> &flow_matrix, int group_num, decltype(METIS_PartGraphKway) *METIS_PartGraphFunc) {
+		vector<idx_t> xadj, adjncy, adjwgt;
+		transform_graph_2_csr(xadj, adjncy, adjwgt);
+		idx_t nvtxs = xadj.size() - 1;
+		idx_t ncon = 1;
+		idx_t nparts = group_num;
+		idx_t objval;
+		vector<idx_t> part(nvtxs, 0);
+
+		int ret = METIS_PartGraphFunc(&nvtxs, &ncon, xadj.data(),
+			adjncy.data(), NULL, NULL, adjwgt.data(),
+			&nparts, NULL, NULL, NULL,
+			&objval, part.data());
+
+		if (ret != rstatus_et::METIS_OK) {
+		}
+		// [todo] 这里生成flow_matrix
+		for (unsigned part_i = 0; part_i < part.size(); ++part_i) {
+			cout << part_i << " " << part[part_i] << endl;
+		}
+		cout << objval << endl;
+	}
+
+	/// [deprecated] 使用数学模型求解分组问题
+	void gurobi_cluster(vector<vector<int>> &flow_matrix, int group_num, int bin_area) {
 		try {
 			// Initialize environment & empty model
 			GRBEnv env = GRBEnv(true);
@@ -107,7 +197,7 @@ public:
 				for (int i = 0; i < x.size(); ++i) {
 					for (int p = 0; p < x[i].size(); ++p) {
 						if (x[i][p].get(GRB_DoubleAttr_X)) {
-							// [todo] 这里生成flow matrix
+							// [todo] 这里生成flow_matrix
 							std::cout << i << " is in group " << p << std::endl;
 						}
 					}
@@ -129,48 +219,6 @@ public:
 			std::cout << "Exception during optimization." << std::endl;
 			return;
 		}
-	}
-
-	/// 计算QAP的distance matrix
-	vector<vector<int>> cal_distance_matrix(int dimension, LevelDistance method) {
-		int node_num = dimension * dimension;
-		vector<pair<int, int>> nodes(node_num);
-		for (int x = 0; x < dimension; ++x) {
-			for (int y = 0; y < dimension; ++y) {
-				nodes[x * dimension + y].first = x;
-				nodes[x * dimension + y].second = y;
-			}
-		}
-		vector<vector<int>> distance_matrix(node_num, vector<int>(node_num, 0));
-		for (int i = 0; i < node_num; ++i) {
-			for (int j = i + 1; j < node_num; ++j) {
-				distance_matrix[i][j] = cal_distance(
-					nodes[i].first, nodes[i].second, nodes[j].first, nodes[j].second, method);
-				distance_matrix[j][i] = distance_matrix[i][j];
-			}
-		}
-		return distance_matrix;
-	}
-
-private:
-	/// 结合net_list还原出图
-	void build_graph(LevelConnection method) {
-		int node_num = _ins.get_block_num();  // [todo] 需要将terminal也加入图中
-		_graph.resize(node_num, vector<int>(node_num, 0));
-		auto &net_list = _ins.get_net_list();
-		for (auto &net : net_list) {
-			for (int i = 0; i < net.block_list.size(); ++i) {
-				for (int j = i + 1; j < net.block_list.size(); ++j) {
-					int a = net.block_list[i];
-					int b = net.block_list[j];
-					_graph[a][b] += 1;
-					_graph[b][a] += 1;
-				}
-			}
-		}
-
-		// [todo] 考虑非直连的边，需要结合最短路径算法求跳数
-		if (method == LevelConnection::LevelIndirect) {}
 	}
 
 	int cal_distance(int x1, int y1, int x2, int y2, LevelDistance method) {
