@@ -22,8 +22,10 @@
 #include<ctime>
 #include<cmath>
 
-namespace qap {
+#include <vector>
 
+namespace qap {
+#define time_limit 30
 #define mem_size 100000
 typedef int*   type_vector;
 typedef long** type_matrix;
@@ -102,7 +104,7 @@ void apply_move(type_vector & p,long n, type_matrix & delta, long & current_cost
                         end_time = clock();
 			iter_without_improvement = 0;
 			for (int m = 1; m <= n; m = m+1) best_sol[m] = p[m];
-			cout << "Solution of value " << best_cost<< " found. " <<iteration<< endl;
+			//cout << "Solution of value " << best_cost<< " found. " <<iteration<< endl;
 
 		}
 	} iteration++;
@@ -321,7 +323,7 @@ void BLS(long n,                  // problem size
                 previous_cost = current_cost;
         
                 perturbe(p,n, delta, current_cost, a, b, last_swaped, iter_without_improvement, best_sol, best_cost, end_time);
-                 if(ceil((clock() - start)/static_cast<double>(CLOCKS_PER_SEC))>=7200 or best_cost==best_objective)
+                 if(ceil((clock() - start)/static_cast<double>(CLOCKS_PER_SEC))>=time_limit or best_cost==best_objective)
                    break;
 	} 
         end_time-=start;
@@ -330,9 +332,9 @@ void BLS(long n,                  // problem size
 	for (int i=1; i <= n; i = i+1)
 	{ 
 		delete[] delta[i];
-		delete [] last_swaped[i];
+		delete[] last_swaped[i];
 	}
-	delete[] delta;  delete [] last_swaped; 
+	delete[] delta;  delete[] last_swaped; 
 } // BLS
 
 void generate_random_solution(long n, type_vector  & p)
@@ -341,6 +343,7 @@ void generate_random_solution(long n, type_vector  & p)
   for (i = 0; i <= n; i = i+1) p[i] = i;
   for (i = 1; i <  n; i = i+1) transpose(p[i], p[i + rand()%(n-i+1)]);
 }
+
 void load_problem( int &n, type_matrix &a, type_matrix &b, long & best_objective)
 {
 	cin >> best_objective >> n; 
@@ -368,17 +371,17 @@ void load_problem_from_datfile(int &n, type_matrix &a, type_matrix &b, long & be
 	ifs >> n;
 	a = new long*[n + 1];
 	b = new long*[n + 1];
-	for (int i = 1; i <= n; i = i + 1)
+	for (int i = 1; i <= n; i = i+1)
 	{
 		a[i] = new long[n + 1];
 		b[i] = new long[n + 1];
 	}
 
-	for (int i = 1; i <= n; i = i + 1)
-		for (int j = 1; j <= n; j = j + 1)
+	for (int i = 1; i <= n; i = i+1)
+		for (int j = 1; j <= n; j = j+1)
 			ifs >> a[i][j];
-	for (int i = 1; i <= n; i = i + 1)
-		for (int j = 1; j <= n; j = j + 1)
+	for (int i = 1; i <= n; i = i+1)
+		for (int j = 1; j <= n; j = j+1)
 			ifs >> b[i][j];
 }
 
@@ -401,17 +404,59 @@ void run_bls(int &n, type_matrix &a, type_matrix &b, long &best_objective) {
 	iteration = 0;
 	BLS(n, a, b, solution, cost, num_iterations, best_objective, time);
 
-	cout << "Solution cost " << cost << " " << (time) / static_cast<double>(CLOCKS_PER_SEC) << " " << 100.0*static_cast<double>(cost - best_objective) / static_cast<double>(best_objective) << endl;
-	cout << "Solution detail ";
-	for (int i = 1; i <= n; ++i) { cout << solution[i] << " "; }
-
-	delete[]solution;
+	//cout << "Solution cost " << cost << " " << (time) / static_cast<double>(CLOCKS_PER_SEC) << " " << 100.0*static_cast<double>(cost - best_objective) / static_cast<double>(best_objective) << endl;
+	//cout << "Solution detail "; for (int i = 1; i <= n; i = i + 1) { cout << solution[i] << " "; } cout << endl;
 }
 
-void test_bls() {
+void test_qap() {
     //load_problem(n, a, b, best_objective);
 	load_problem_from_datfile(n, a, b, best_objective);
+	
 	run_bls(n, a, b, best_objective);
+	
+	delete[] solution;
+	for (int i = 1; i <= n; i = i + 1) {
+		delete[] a[i];
+		delete[] b[i];
+	}
+	delete[] a; delete[] b;
+}
+
+void run_qap(const vector<vector<int>> &flow_matrix, const vector<vector<int>> &distance_matrix, vector<int> &sol) {
+	// load_problem_from_vector
+	best_objective = 0;
+	n = flow_matrix.size();
+	a = new long*[n + 1];
+	b = new long*[n + 1];
+	for (int i = 1; i <= n; i = i + 1) {
+		a[i] = new long[n + 1];
+		b[i] = new long[n + 1];
+	}
+	for (int i = 1; i <= n; i = i + 1)
+		for (int j = 1; j <= n; j = j + 1)
+			a[i][j] = flow_matrix[i - 1][j - 1];
+	for (int i = 1; i <= n; i = i + 1)
+		for (int j = 1; j <= n; j = j + 1)
+			b[i][j] = distance_matrix[i - 1][j - 1];
+
+	run_bls(n, a, b, best_objective);
+
+	sol.clear(); sol.reserve(n);
+	for (int i = 1; i <= n; i = i + 1) { sol.push_back(solution[i]); }
+
+	delete[] solution;
+	for (int i = 1; i <= n; i = i + 1) {
+		delete[] a[i];
+		delete[] b[i];
+	}
+	delete[] a; delete[] b;
+
+	// check cost
+	//int check_cost = 0;
+	//for (int i = 0; i < n; ++i)
+	//	for (int j = 0; j < n; ++j)
+	//		check_cost += flow_matrix[i][j] * distance_matrix[sol[i] - 1][sol[j] - 1];
+	//cout << (cost == check_cost) << endl;
 }
 
 }

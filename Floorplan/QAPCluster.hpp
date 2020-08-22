@@ -7,6 +7,8 @@
 #include <cmath>
 #include <metis.h>
 #include <gurobi_c++.h>
+
+#include "../QAPSolver/QAPSolver.hpp"
 #include "Instance.hpp"
 
 /// 将算例预处理成QAP算例
@@ -27,38 +29,65 @@ public:
 	QAPCluster(const Instance &ins) : _ins(ins) { build_graph(LevelConnection::LevelDirect); }
 
 	/// 计算QAP的flow matrix
-	vector<vector<int>> cal_flow_matrix(int node_num) {
-		vector<vector<int>> flow_matrix(node_num, vector<int>(node_num, 0));
-		//gurobi_cluster(flow_matrix, node_num, bin_area);
-		metis_cluster(flow_matrix, node_num, METIS_PartGraphKway);
+	vector<vector<int>> cal_flow_matrix(int dimension) {
+		vector<vector<int>> flow_matrix;
+		//gurobi_cluster(flow_matrix, dimension * dimension, bin_area);
+		metis_cluster(flow_matrix, dimension * dimension, METIS_PartGraphKway);
 		return flow_matrix;
 	}
 
 	/// 计算QAP的distance matrix
 	vector<vector<int>> cal_distance_matrix(int dimension, LevelDistance method) {
 		int node_num = dimension * dimension;
-		vector<pair<int, int>> nodes(node_num);
+		distance_nodes.resize(node_num);
 		for (int x = 0; x < dimension; ++x) {
 			for (int y = 0; y < dimension; ++y) {
-				nodes[x * dimension + y].first = x;
-				nodes[x * dimension + y].second = y;
+				distance_nodes[x * dimension + y].first = x;
+				distance_nodes[x * dimension + y].second = y;
 			}
 		}
 		vector<vector<int>> distance_matrix(node_num, vector<int>(node_num, 0));
 		for (int i = 0; i < node_num; ++i) {
 			for (int j = i + 1; j < node_num; ++j) {
-				distance_matrix[i][j] = cal_distance(
-					nodes[i].first, nodes[i].second, nodes[j].first, nodes[j].second, method);
+				distance_matrix[i][j] = cal_distance(method, 
+					distance_nodes[i].first, distance_nodes[i].second,
+					distance_nodes[j].first, distance_nodes[j].second);
 				distance_matrix[j][i] = distance_matrix[i][j];
 			}
 		}
 		return distance_matrix;
 	}
 
+	void cal_qap_sol(const vector<vector<int>> &flow_matrix, const vector<vector<int>> &distance_matrix) {
+		qap::run_qap(flow_matrix, distance_matrix, qap_sol);
+	}
+
+	static int cal_distance(LevelDistance method, int x1, int y1, int x2, int y2) {
+		int distance = 0;
+		switch (method) {
+		case LevelDistance::EuclideanDis:
+			distance = round(sqrt(pow(x1 - x2, 2) + pow(y1 - y2, 2)));
+			break;
+		case LevelDistance::ManhattanDis:
+			distance = abs(x1 - x2) + abs(y1 - y2);
+			break;
+		case LevelDistance::ChebyshevDis:
+			distance = max(abs(x1 - x2), abs(y1 - y2));
+			break;
+		case LevelDistance::EuclideanSqrDis:
+			distance = pow(x1 - x2, 2) + pow(y1 - y2, 2);
+			break;
+		default:
+			assert(false);
+			break;
+		}
+		return distance;
+	}
+
 private:
 	/// 结合net_list还原出图
 	/// [todo] 需要将terminal也加入图中
-	/// [todo] 考虑非直连的边，需要结合最短路径算法求跳数
+	/// [todo] 考虑非直连的边，需要结合最短路径算法求跳数，但metis不支持浮点型权重
 	void build_graph(LevelConnection method) {
 		_graph.resize(_ins.get_block_num(), vector<int>(_ins.get_block_num(), 0));
 		for (auto &net : _ins.get_net_list()) {
@@ -76,12 +105,14 @@ private:
 	}
 
 	/// 邻接矩阵转压缩图（CSR）
-	void transform_graph_2_csr(vector<idx_t> &xadj, vector<idx_t> &adjncy, vector<idx_t> &adjwgt) {
+	void transform_graph_2_csr(vector<idx_t> &xadj, vector<idx_t> &adjncy, vector<idx_t> &vwgt, vector<idx_t> &adjwgt) {
 		xadj.reserve(_graph.size() + 1);
+		vwgt.reserve(_graph.size());
 		adjncy.reserve(_graph.size() * _graph.size());
 		adjwgt.reserve(_graph.size() * _graph.size());
 		for (int i = 0; i < _graph.size(); ++i) {
 			xadj.push_back(adjncy.size());
+			vwgt.push_back(_ins.get_block_area(i));
 			for (int j = 0; j < _graph.size(); ++j) {
 				if (i == j) { continue; }
 				if (_graph[i][j] >= 1) {
@@ -95,30 +126,35 @@ private:
 
 	/// metis求解分组问题
 	void metis_cluster(vector<vector<int>> &flow_matrix, int group_num, decltype(METIS_PartGraphKway) *METIS_PartGraphFunc) {
-		vector<idx_t> xadj, adjncy, adjwgt;
-		transform_graph_2_csr(xadj, adjncy, adjwgt);
+		vector<idx_t> xadj, adjncy, vwgt, adjwgt;
+		transform_graph_2_csr(xadj, adjncy, vwgt, adjwgt);
 		idx_t nvtxs = xadj.size() - 1;
 		idx_t ncon = 1;
 		idx_t nparts = group_num;
 		idx_t objval;
-		vector<idx_t> part(nvtxs, 0);
+		part.resize(nvtxs, 0);
 
-		int ret = METIS_PartGraphFunc(&nvtxs, &ncon, xadj.data(),
-			adjncy.data(), NULL, NULL, adjwgt.data(),
-			&nparts, NULL, NULL, NULL,
-			&objval, part.data());
+		int ret = METIS_PartGraphFunc(&nvtxs, &ncon, xadj.data(), adjncy.data(),
+			vwgt.data(), NULL, adjwgt.data(), &nparts, NULL,
+			NULL, NULL, &objval, part.data());
 
-		if (ret != rstatus_et::METIS_OK) {
-		}
-		// [todo] 这里生成flow_matrix
+		assert(ret == rstatus_et::METIS_OK);
+
+		flow_matrix.clear();
+		flow_matrix.resize(nparts, vector<int>(nparts, 0));
 		for (unsigned part_i = 0; part_i < part.size(); ++part_i) {
-			cout << part_i << " " << part[part_i] << endl;
+			for (unsigned part_j = part_i + 1; part_j < part.size(); ++part_j) {
+				if (part[part_i] == part[part_j]) { continue; }
+				flow_matrix[part[part_i]][part[part_j]] += _graph[part_i][part_j];
+				flow_matrix[part[part_j]][part[part_i]] += _graph[part_j][part_i];
+			}
 		}
-		cout << objval << endl;
 	}
 
 	/// [deprecated] 使用数学模型求解分组问题
 	void gurobi_cluster(vector<vector<int>> &flow_matrix, int group_num, int bin_area) {
+		flow_matrix.clear();
+		flow_matrix.resize(group_num, vector<int>(group_num, 0));
 		try {
 			// Initialize environment & empty model
 			GRBEnv env = GRBEnv(true);
@@ -207,7 +243,7 @@ private:
 			else if (status == GRB_INFEASIBLE) {
 				std::cout << "The model is infeasible; computing IIS..." << std::endl;
 				gm.computeIIS();
-				gm.write("model.ilp");
+				gm.write("cluster_model.ilp");
 			}
 		}
 		catch (GRBException &e) {
@@ -221,27 +257,11 @@ private:
 		}
 	}
 
-	int cal_distance(int x1, int y1, int x2, int y2, LevelDistance method) {
-		int distance = 0;
-		switch (method) {
-		case LevelDistance::EuclideanDis:
-			distance = sqrt(pow(x1 - x2, 2) + pow(y1 - y2, 2));
-			break;
-		case LevelDistance::ManhattanDis:
-			distance = abs(x1 - x2) + abs(y1 - y2);
-			break;
-		case LevelDistance::ChebyshevDis:
-			distance = max(abs(x1 - x2), abs(y1 - y2));
-			break;
-		case LevelDistance::EuclideanSqrDis:
-			distance = pow(x1 - x2, 2) + pow(y1 - y2, 2);
-			break;
-		default:
-			assert(false);
-			break;
-		}
-		return distance;
-	}
+public:
+	// `qap_sol[part[rect.id]] = distance_node_id = group_id`
+	vector<int> part;
+	vector<int> qap_sol;
+	vector<pair<int, int>> distance_nodes;
 
 private:
 	const Instance &_ins;

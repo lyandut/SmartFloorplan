@@ -10,6 +10,7 @@
 
 #include "Instance.hpp"
 #include "SkylineBinPack.hpp"
+#include "QAPCluster.hpp"
 
 namespace fbp {
 
@@ -20,9 +21,10 @@ namespace fbp {
 	public:
 		FloorplanBinPack() = delete;
 
-		FloorplanBinPack(const Instance &ins, int bin_width, int bin_height, bool use_waste_map = false, int group_num = 1) :
-			SkylineBinPack(bin_width, bin_height, use_waste_map),
-			_ins(ins), _src(_ins.get_rects()), _min_bin_height(numeric_limits<int>::max()), _group_num(group_num) {
+		FloorplanBinPack(const Instance &ins, const QAPCluster &cluster,
+			int bin_width, int bin_height, int group_num = 1, bool use_waste_map = false) :
+			_ins(ins), _cluster(cluster), _src(_ins.get_rects()), _min_bin_height(numeric_limits<int>::max()), _group_num(group_num),
+			SkylineBinPack(bin_width, bin_height, use_waste_map) {
 
 			// set random seed
 			_seed = random_device{}();
@@ -213,13 +215,38 @@ namespace fbp {
 	private:
 		/// 初始化分组信息
 		void init_group_info() {
-			//if (_group_num == 1) {
-			//	_group_boundaries.resize(1, { 0, 0, 0, 0, binWidth, binHeight });
-			//	_group_neighbors.resize(1, vector<bool>(1, false));
-			//	for (auto &rect : _src) { rect.gid = 0; }
-			//}
+			if (_group_num == 1) {
+				_group_boundaries.resize(1, { 0, 0, 1.0*binWidth, 1.0*binHeight });
+				_group_neighbors.resize(1, { false });
+				for (auto &rect : _src) { rect.gid = 0; }
+			}
+			else {
+				_group_num = _cluster.qap_sol.size();
+				double unit_width = 1.0*binWidth / sqrt(_group_num);
+				double unit_height = 1.0*binHeight / sqrt(_group_num);
+				_group_boundaries.resize(_group_num);
+				for (int gid = 0; gid < _group_num; ++gid) {
+					_group_boundaries[gid].x = unit_width * _cluster.distance_nodes.at(gid).first;
+					_group_boundaries[gid].y = unit_height * _cluster.distance_nodes.at(gid).second;
+					_group_boundaries[gid].width = unit_width;
+					_group_boundaries[gid].height = unit_height;
+				}
+				_group_neighbors.resize(_group_num, vector<bool>(_group_num, false));
+				for (int gi = 0; gi < _group_num; ++gi) {
+					for (int gj = gi + 1; gj < _group_num; ++gj) {
+						int cbsv_dis = QAPCluster::cal_distance(QAPCluster::LevelDistance::ChebyshevDis,
+							_cluster.distance_nodes.at(gi).first, _cluster.distance_nodes.at(gi).second,
+							_cluster.distance_nodes.at(gj).first, _cluster.distance_nodes.at(gj).second);
+						if (cbsv_dis == 1) { // 切比雪夫距离为1定义为邻居
+							_group_neighbors[gi][gj] = true;
+							_group_neighbors[gj][gi] = true;
+						}
+					}
+				}
+				for (auto &rect : _src) { rect.gid = _cluster.qap_sol.at(_cluster.part.at(rect.id)); }
+			}
 		}
-		
+
 		/// 初始化排序规则列表
 		void init_sort_rules() {
 			vector<int> seq(_src.size());
@@ -237,6 +264,9 @@ namespace fbp {
 				return _src.at(lhs).width > _src.at(rhs).width; });
 			// 4_随机排序
 			shuffle(_sort_rules[4].sequence.begin(), _sort_rules[4].sequence.end(), mt19937{ _seed });
+
+			// 默认赋给_rect输入顺序，用于测试贪心算法
+			_rects.assign(_sort_rules[0].sequence.begin(), _sort_rules[0].sequence.end());
 		}
 
 		/// 基于分组策略挑选候选矩形，减小搜索规模
@@ -433,6 +463,7 @@ namespace fbp {
 
 	private:
 		const Instance &_ins;
+		const QAPCluster &_cluster;
 
 		vector<Rect> _src; // 源矩形列表，初始化后不修改
 		vector<Rect> _dst;
@@ -448,7 +479,11 @@ namespace fbp {
 
 		/// 分组信息
 		int _group_num;
-		vector<Rect> _group_boundaries;        // `_group_boundaries[i]`   分组_i的边界
+		struct Boundary {
+			double x, y;
+			double width, height;
+		};
+		vector<Boundary> _group_boundaries;    // `_group_boundaries[i]`   分组_i的边界
 		vector<vector<bool>> _group_neighbors; // `_group_neighbors[i][j]` 分组_i和_j是否为邻居
 
 		unsigned int _seed;

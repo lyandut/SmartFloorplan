@@ -154,6 +154,7 @@
     <ClCompile Include="QAPSolver.hpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\Deploy\Instance\QAPdata\nug12.dat" />
     <None Include="..\Deploy\Instance\qapdata\tai20a.dat" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
