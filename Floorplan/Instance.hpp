@@ -12,8 +12,8 @@
 #include <cassert>
 #include <algorithm>
 
-#include "Utils.hpp"
 #include "Rect.hpp"
+#include "Utils.hpp"
 
 using namespace std;
 

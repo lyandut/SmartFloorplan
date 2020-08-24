@@ -23,18 +23,26 @@ namespace rbp {
 
 	struct Rect
 	{
-		// used for floorplan.
 		int id;
 		int gid;
-		
+
 		int x;
 		int y;
 		int width;
 		int height;
 	};
 
+	struct Boundary
+	{
+		double x;
+		double y;
+		double width;
+		double height;
+	};
+
 	/// Returns true if a is contained in b.
-	bool IsContainedIn(const Rect &a, const Rect &b) {
+	bool IsContainedIn(const Rect &a, const Rect &b)
+	{
 		return a.x >= b.x && a.y >= b.y
 			&& a.x + a.width <= b.x + b.width
 			&& a.y + a.height <= b.y + b.height;

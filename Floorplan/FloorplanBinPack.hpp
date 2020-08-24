@@ -10,7 +10,6 @@
 
 #include "Instance.hpp"
 #include "SkylineBinPack.hpp"
-#include "QAPCluster.hpp"
 
 namespace fbp {
 
@@ -21,16 +20,22 @@ namespace fbp {
 	public:
 		FloorplanBinPack() = delete;
 
-		FloorplanBinPack(const Instance &ins, const QAPCluster &cluster,
-			int bin_width, int bin_height, int group_num = 1, bool use_waste_map = false) :
-			_ins(ins), _cluster(cluster), _src(_ins.get_rects()), _min_bin_height(numeric_limits<int>::max()), _group_num(group_num),
+		FloorplanBinPack(const vector<Rect> &src, const vector<vector<bool>> &group_neighbors, vector<Boundary> &group_boundaries,
+			int bin_width, int bin_height, bool use_waste_map = false) :
+			_src(src), _group_neighbors(group_neighbors), _group_boundaries(group_boundaries),
 			SkylineBinPack(bin_width, bin_height, use_waste_map) {
 
-			// set random seed
-			_seed = random_device{}();
+			_min_bin_height = numeric_limits<int>::max();
 
-			init_group_info();
+			_seed = random_device{}(); // set random seed
+
 			init_sort_rules();
+		}
+
+		/// 固定宽度，更新高度
+		void update_height(int new_height, const vector<Boundary> &new_boundaries) {
+			binHeight = new_height;
+			_group_boundaries = new_boundaries;
 		}
 
 		/// 分组搜索策略
@@ -49,12 +54,11 @@ namespace fbp {
 
 		/// 基于binWidth进行随机局部搜索，返回最小高度
 		int random_local_search(int iter) {
-			// first time to call RLS
+			// the first time to call RLS on W_k
 			if (iter == 1) {
 				for (auto &rule : _sort_rules) {
 					_rects.assign(rule.sequence.begin(), rule.sequence.end());
 					vector<Rect> target_dst;
-					target_dst.reserve(_rects.size());
 					rule.target_height = insert_bottom_left_score(target_dst, LevelGroupSearch::LevelSelfishly);
 					if (rule.target_height < _min_bin_height) {
 						_min_bin_height = rule.target_height;
@@ -73,7 +77,6 @@ namespace fbp {
 			auto &picked_rule = _sort_rules[discrete_dist(gen)];
 			_rects.assign(picked_rule.sequence.begin(), picked_rule.sequence.end());
 			vector<Rect> target_dst;
-			target_dst.reserve(_rects.size());
 			picked_rule.target_height = min(picked_rule.target_height, insert_bottom_left_score(target_dst, LevelGroupSearch::LevelSelfishly));
 			if (picked_rule.target_height < _min_bin_height) {
 				_min_bin_height = picked_rule.target_height;
@@ -90,7 +93,6 @@ namespace fbp {
 				swap(new_rule.sequence[a], new_rule.sequence[b]);
 				_rects.assign(new_rule.sequence.begin(), new_rule.sequence.end());
 				vector<Rect> target_dst;
-				target_dst.reserve(_rects.size());
 				new_rule.target_height = min(new_rule.target_height, insert_bottom_left_score(target_dst, LevelGroupSearch::LevelSelfishly));
 				if (new_rule.target_height < picked_rule.target_height) {
 					picked_rule = new_rule;
@@ -110,6 +112,7 @@ namespace fbp {
 		int insert_bottom_left_score(vector<Rect> &dst, LevelGroupSearch method_1) {
 			int min_bin_height = 0;
 			dst.clear();
+			dst.reserve(_rects.size());
 			while (!_rects.empty()) {
 				auto bottom_skyline_iter = min_element(skyLine.begin(), skyLine.end(),
 					[](auto &lhs, auto &rhs) { return lhs.y < rhs.y; });
@@ -161,6 +164,7 @@ namespace fbp {
 		int insert_greedy_fit(vector<Rect> &dst, LevelGroupSearch method_1, LevelHeuristicSearch method_2) {
 			int min_bin_height = 0;
 			dst.clear();
+			dst.reserve(_rects.size());
 			while (!_rects.empty()) {
 				Rect best_node;
 				int best_score_1 = numeric_limits<int>::max();
@@ -213,40 +217,6 @@ namespace fbp {
 		}
 
 	private:
-		/// 初始化分组信息
-		void init_group_info() {
-			if (_group_num == 1) {
-				_group_boundaries.resize(1, { 0, 0, 1.0*binWidth, 1.0*binHeight });
-				_group_neighbors.resize(1, { false });
-				for (auto &rect : _src) { rect.gid = 0; }
-			}
-			else {
-				_group_num = _cluster.qap_sol.size();
-				double unit_width = 1.0*binWidth / sqrt(_group_num);
-				double unit_height = 1.0*binHeight / sqrt(_group_num);
-				_group_boundaries.resize(_group_num);
-				for (int gid = 0; gid < _group_num; ++gid) {
-					_group_boundaries[gid].x = unit_width * _cluster.distance_nodes.at(gid).first;
-					_group_boundaries[gid].y = unit_height * _cluster.distance_nodes.at(gid).second;
-					_group_boundaries[gid].width = unit_width;
-					_group_boundaries[gid].height = unit_height;
-				}
-				_group_neighbors.resize(_group_num, vector<bool>(_group_num, false));
-				for (int gi = 0; gi < _group_num; ++gi) {
-					for (int gj = gi + 1; gj < _group_num; ++gj) {
-						int cbsv_dis = QAPCluster::cal_distance(QAPCluster::LevelDistance::ChebyshevDis,
-							_cluster.distance_nodes.at(gi).first, _cluster.distance_nodes.at(gi).second,
-							_cluster.distance_nodes.at(gj).first, _cluster.distance_nodes.at(gj).second);
-						if (cbsv_dis == 1) { // 切比雪夫距离为1定义为邻居
-							_group_neighbors[gi][gj] = true;
-							_group_neighbors[gj][gi] = true;
-						}
-					}
-				}
-				for (auto &rect : _src) { rect.gid = _cluster.qap_sol.at(_cluster.part.at(rect.id)); }
-			}
-		}
-
 		/// 初始化排序规则列表
 		void init_sort_rules() {
 			vector<int> seq(_src.size());
@@ -272,7 +242,7 @@ namespace fbp {
 		/// 基于分组策略挑选候选矩形，减小搜索规模
 		list<int> get_candidate_rects(const SkylineNode &skyline, LevelGroupSearch method) {
 			int gid = 0;
-			for (; gid < _group_num; ++gid) {
+			for (; gid < _group_boundaries.size(); ++gid) {
 				if (skyline.x >= _group_boundaries[gid].x && skyline.y >= _group_boundaries[gid].y
 					&& skyline.x < _group_boundaries[gid].x + _group_boundaries[gid].width
 					&& skyline.y < _group_boundaries[gid].y + _group_boundaries[gid].height) {
@@ -462,10 +432,7 @@ namespace fbp {
 		}
 
 	private:
-		const Instance &_ins;
-		const QAPCluster &_cluster;
-
-		vector<Rect> _src; // 源矩形列表，初始化后不修改
+		const vector<Rect> &_src;
 		vector<Rect> _dst;
 		int _min_bin_height;
 
@@ -478,15 +445,9 @@ namespace fbp {
 		list<int> _rects;			  // SortRule的sequence，相当于指针，使用list快速删除，放置完毕为空
 
 		/// 分组信息
-		int _group_num;
-		struct Boundary {
-			double x, y;
-			double width, height;
-		};
-		vector<Boundary> _group_boundaries;    // `_group_boundaries[i]`   分组_i的边界
-		vector<vector<bool>> _group_neighbors; // `_group_neighbors[i][j]` 分组_i和_j是否为邻居
+		const vector<vector<bool>> &_group_neighbors; // `_group_neighbors[i][j]` 分组_i和_j是否为邻居	public:
+		vector<Boundary> &_group_boundaries;          // `_group_boundaries[i]`   分组_i的边界
 
 		unsigned int _seed;
 	};
 }
-
