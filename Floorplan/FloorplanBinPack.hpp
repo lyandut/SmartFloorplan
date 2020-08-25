@@ -20,10 +20,10 @@ namespace fbp {
 	public:
 		FloorplanBinPack() = delete;
 
-		FloorplanBinPack(const vector<Rect> &src, const vector<vector<bool>> &group_neighbors, vector<Boundary> &group_boundaries,
-			int bin_width, int bin_height, bool use_waste_map = false) :
+		FloorplanBinPack(const vector<Rect> &src, const vector<vector<bool>> &group_neighbors,
+			vector<Boundary> &group_boundaries, int bin_width, int bin_height) :
 			_src(src), _group_neighbors(group_neighbors), _group_boundaries(group_boundaries),
-			SkylineBinPack(bin_width, bin_height, use_waste_map) {
+			SkylineBinPack(bin_width, bin_height, false) {
 
 			_min_bin_height = numeric_limits<int>::max();
 
@@ -33,10 +33,15 @@ namespace fbp {
 		}
 
 		/// 固定宽度，更新高度
-		void update_height(int new_height, const vector<Boundary> &new_boundaries) {
+		void update_bin_height(int new_height, const vector<Boundary> &new_boundaries) {
 			binHeight = new_height;
 			_group_boundaries = new_boundaries;
 		}
+
+		const vector<Rect>& get_dst() const { return _dst; }
+
+		/// 计算填充率,与Occupancy()不同
+		float get_fill_ratio() const { return (float)usedSurfaceArea / (binWidth * _min_bin_height); }
 
 		/// 分组搜索策略
 		enum LevelGroupSearch {
@@ -53,13 +58,13 @@ namespace fbp {
 		};
 
 		/// 基于binWidth进行随机局部搜索，返回最小高度
-		int random_local_search(int iter) {
+		void random_local_search(int iter, LevelGroupSearch method) {
 			// the first time to call RLS on W_k
 			if (iter == 1) {
 				for (auto &rule : _sort_rules) {
 					_rects.assign(rule.sequence.begin(), rule.sequence.end());
 					vector<Rect> target_dst;
-					rule.target_height = insert_bottom_left_score(target_dst, LevelGroupSearch::LevelSelfishly);
+					rule.target_height = insert_bottom_left_score(target_dst, method);
 					if (rule.target_height < _min_bin_height) {
 						_min_bin_height = rule.target_height;
 						_dst = target_dst;
@@ -74,10 +79,11 @@ namespace fbp {
 			probs.reserve(_sort_rules.size());
 			for (int i = 1; i <= _sort_rules.size(); ++i) { probs.push_back(2 * i); }
 			discrete_distribution<> discrete_dist(probs.begin(), probs.end());
-			auto &picked_rule = _sort_rules[discrete_dist(gen)];
+
+			SortRule &picked_rule = _sort_rules[discrete_dist(gen)];
 			_rects.assign(picked_rule.sequence.begin(), picked_rule.sequence.end());
 			vector<Rect> target_dst;
-			picked_rule.target_height = min(picked_rule.target_height, insert_bottom_left_score(target_dst, LevelGroupSearch::LevelSelfishly));
+			picked_rule.target_height = min(picked_rule.target_height, insert_bottom_left_score(target_dst, method));
 			if (picked_rule.target_height < _min_bin_height) {
 				_min_bin_height = picked_rule.target_height;
 				_dst = target_dst;
@@ -93,7 +99,7 @@ namespace fbp {
 				swap(new_rule.sequence[a], new_rule.sequence[b]);
 				_rects.assign(new_rule.sequence.begin(), new_rule.sequence.end());
 				vector<Rect> target_dst;
-				new_rule.target_height = min(new_rule.target_height, insert_bottom_left_score(target_dst, LevelGroupSearch::LevelSelfishly));
+				new_rule.target_height = min(new_rule.target_height, insert_bottom_left_score(target_dst, method));
 				if (new_rule.target_height < picked_rule.target_height) {
 					picked_rule = new_rule;
 				}
@@ -105,11 +111,9 @@ namespace fbp {
 
 			// 更新排序规则列表
 			sort(_sort_rules.begin(), _sort_rules.end(), [](auto &lhs, auto &rhs) { return lhs.target_height > rhs.target_height; });
-
-			return _min_bin_height;
 		}
 
-		int insert_bottom_left_score(vector<Rect> &dst, LevelGroupSearch method_1) {
+		int insert_bottom_left_score(vector<Rect> &dst, LevelGroupSearch method) {
 			int min_bin_height = 0;
 			dst.clear();
 			dst.reserve(_rects.size());
@@ -117,7 +121,7 @@ namespace fbp {
 				auto bottom_skyline_iter = min_element(skyLine.begin(), skyLine.end(),
 					[](auto &lhs, auto &rhs) { return lhs.y < rhs.y; });
 				int best_skyline_index = distance(skyLine.begin(), bottom_skyline_iter);
-				list<int> candidate_rects = get_candidate_rects(*bottom_skyline_iter, method_1);
+				list<int> candidate_rects = get_candidate_rects(*bottom_skyline_iter, method);
 				auto min_width_iter = min_element(candidate_rects.begin(), candidate_rects.end(),
 					[this](int lhs, int rhs) { return _src.at(lhs).width < _src.at(rhs).width; });
 				auto min_height_iter = min_element(candidate_rects.begin(), candidate_rects.end(),
@@ -129,39 +133,40 @@ namespace fbp {
 					else if (best_skyline_index == skyLine.size() - 1) { skyLine[best_skyline_index].y = skyLine[best_skyline_index - 1].y; }
 					else { skyLine[best_skyline_index].y = min(skyLine[best_skyline_index - 1].y, skyLine[best_skyline_index + 1].y); }
 					MergeSkylines();
+					continue;
 				}
-				else {
-					int best_rect_index = -1;
-					Rect best_node = find_rect_for_skyline_bottom_left(best_skyline_index, candidate_rects, best_rect_index);
 
-					// 没有矩形能放下
-					if (best_rect_index == -1) { return binHeight; }
+				int best_rect_index = -1;
+				Rect best_node = find_rect_for_skyline_bottom_left(best_skyline_index, candidate_rects, best_rect_index);
 
-					// 执行放置
-					debug_assert(disjointRects.Disjoint(best_node));
-					debug_run(disjointRects.Add(best_node));
-					if (best_node.x == skyLine[best_skyline_index].x) { // 靠左
-						AddSkylineLevel(best_skyline_index, best_node);
-					}
-					else { // 靠右
-						SkylineNode new_skyline{ best_node.x, best_node.y + best_node.height, best_node.width };
-						assert(new_skyline.x + new_skyline.width <= binWidth);
-						assert(new_skyline.y <= binHeight);
-						skyLine.insert(skyLine.begin() + best_skyline_index + 1, new_skyline);
-						skyLine[best_skyline_index].width -= best_node.width;
-						MergeSkylines();
-					}
-					usedSurfaceArea += _src.at(best_rect_index).width * _src.at(best_rect_index).height;
-					_rects.remove(best_rect_index);
-					dst.push_back(best_node);
-					min_bin_height = max(min_bin_height, best_node.y + best_node.height);
+				// 没有矩形能放下
+				if (best_rect_index == -1) { return binHeight + 1; }
+
+				// 执行放置
+				debug_assert(disjointRects.Disjoint(best_node));
+				debug_run(disjointRects.Add(best_node));
+				if (best_node.x == skyLine[best_skyline_index].x) { // 靠左
+					AddSkylineLevel(best_skyline_index, best_node);
 				}
+				else { // 靠右
+					SkylineNode new_skyline{ best_node.x, best_node.y + best_node.height, best_node.width };
+					assert(new_skyline.x + new_skyline.width <= binWidth);
+					assert(new_skyline.y <= binHeight);
+					skyLine.insert(skyLine.begin() + best_skyline_index + 1, new_skyline);
+					skyLine[best_skyline_index].width -= best_node.width;
+					MergeSkylines();
+				}
+				usedSurfaceArea += _src.at(best_rect_index).width * _src.at(best_rect_index).height;
+				_rects.remove(best_rect_index);
+				dst.push_back(best_node);
+				min_bin_height = max(min_bin_height, best_node.y + best_node.height);
 			}
 
 			return min_bin_height;
 		}
 
-		int insert_greedy_fit(vector<Rect> &dst, LevelGroupSearch method_1, LevelHeuristicSearch method_2) {
+		/// [deprecated]
+		int insert_greedy_fit(vector<Rect> &dst, LevelHeuristicSearch method) {
 			int min_bin_height = 0;
 			dst.clear();
 			dst.reserve(_rects.size());
@@ -175,14 +180,13 @@ namespace fbp {
 				for (int i = 0; i < skyLine.size(); ++i) {
 					Rect new_node;
 					int score_1, score_2, rect_index;
-					list<int> candidate_rects = get_candidate_rects(skyLine[i], method_1);
-					switch (method_2) {
+					switch (method) {
 					case LevelHeuristicSearch::LevelMinHeightFit:
-						new_node = find_rect_for_skyline_min_height(i, candidate_rects, score_1, score_2, rect_index);
+						new_node = find_rect_for_skyline_min_height(i, _rects, score_1, score_2, rect_index);
 						debug_assert(disjointRects.Disjoint(new_node));
 						break;
 					case LevelHeuristicSearch::LevelMinWasteFit:
-						new_node = find_rect_for_skyline_min_waste(i, candidate_rects, score_1, score_2, rect_index);
+						new_node = find_rect_for_skyline_min_waste(i, _rects, score_1, score_2, rect_index);
 						debug_assert(disjointRects.Disjoint(new_node));
 						break;
 					default:
@@ -201,7 +205,7 @@ namespace fbp {
 				}
 
 				// 没有矩形能放下
-				if (best_rect_index == -1) { return binHeight; }
+				if (best_rect_index == -1) { return binHeight + 1; }
 
 				// 执行放置
 				debug_assert(disjointRects.Disjoint(best_node));
