@@ -75,14 +75,16 @@ public:
 		read_pl();
 	}
 
-	/// 待打包矩形列表
+	/// 待打包矩形列表，默认w≤h减少后续计算增加无用判断
 	vector<rbp::Rect> get_rects() const {
 		vector<rbp::Rect> rects;
 		rects.reserve(_block_num);
 		for (int i = 0; i < _block_num; ++i) {
 			rects.push_back({ i, 0,
-				_blocks[i].x_coordinate, _blocks[i].y_coordinate,
-				_blocks[i].width, _blocks[i].height });
+				_blocks[i].x_coordinate, 
+				_blocks[i].y_coordinate,
+				min(_blocks[i].width, _blocks[i].height), 
+				max(_blocks[i].width, _blocks[i].height) });
 		}
 		return rects;
 	}

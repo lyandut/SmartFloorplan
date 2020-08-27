@@ -32,16 +32,15 @@ namespace fbp {
 			init_sort_rules();
 		}
 
+		const vector<Rect>& get_dst() const { return _dst; }
+
+		float get_fill_ratio() const { return _best_fill_ratio; }
+
 		/// 固定宽度，更新高度
 		void update_bin_height(int new_height, const vector<Boundary> &new_boundaries) {
 			binHeight = new_height;
 			_group_boundaries = new_boundaries;
 		}
-
-		const vector<Rect>& get_dst() const { return _dst; }
-
-		/// 计算填充率,与Occupancy()不同
-		float get_fill_ratio() const { return (float)usedSurfaceArea / (binWidth * _min_bin_height); }
 
 		/// 分组搜索策略
 		enum LevelGroupSearch {
@@ -67,6 +66,7 @@ namespace fbp {
 					rule.target_height = insert_bottom_left_score(target_dst, method);
 					if (rule.target_height < _min_bin_height) {
 						_min_bin_height = rule.target_height;
+						_best_fill_ratio = (float)usedSurfaceArea / (binWidth * _min_bin_height);
 						_dst = target_dst;
 					}
 				}
@@ -86,6 +86,7 @@ namespace fbp {
 			picked_rule.target_height = min(picked_rule.target_height, insert_bottom_left_score(target_dst, method));
 			if (picked_rule.target_height < _min_bin_height) {
 				_min_bin_height = picked_rule.target_height;
+				_best_fill_ratio = (float)usedSurfaceArea / (binWidth * _min_bin_height);
 				_dst = target_dst;
 			}
 
@@ -105,6 +106,7 @@ namespace fbp {
 				}
 				if (picked_rule.target_height < _min_bin_height) {
 					_min_bin_height = picked_rule.target_height;
+					_best_fill_ratio = (float)usedSurfaceArea / (binWidth * _min_bin_height);
 					_dst = target_dst;
 				}
 			}
@@ -114,6 +116,7 @@ namespace fbp {
 		}
 
 		int insert_bottom_left_score(vector<Rect> &dst, LevelGroupSearch method) {
+			Init(binWidth, binHeight, usedSurfaceArea); // 每次调用重置usedSurfaceArea和skyLine
 			int min_bin_height = 0;
 			dst.clear();
 			dst.reserve(_rects.size());
@@ -124,9 +127,7 @@ namespace fbp {
 				list<int> candidate_rects = get_candidate_rects(*bottom_skyline_iter, method);
 				auto min_width_iter = min_element(candidate_rects.begin(), candidate_rects.end(),
 					[this](int lhs, int rhs) { return _src.at(lhs).width < _src.at(rhs).width; });
-				auto min_height_iter = min_element(candidate_rects.begin(), candidate_rects.end(),
-					[this](int lhs, int rhs) { return _src.at(lhs).height < _src.at(rhs).height; });
-				int min_width = min(_src.at(*min_width_iter).width, _src.at(*min_height_iter).height);
+				int min_width = _src.at(*min_width_iter).width;
 
 				if (bottom_skyline_iter->width < min_width) { // 最小宽度不能满足，需要填坑
 					if (best_skyline_index == 0) { skyLine[best_skyline_index].y = skyLine[best_skyline_index + 1].y; }
@@ -167,6 +168,7 @@ namespace fbp {
 
 		/// [deprecated]
 		int insert_greedy_fit(vector<Rect> &dst, LevelHeuristicSearch method) {
+			Init(binWidth, binHeight, usedSurfaceArea); // 每次调用重置usedSurfaceArea和skyLine
 			int min_bin_height = 0;
 			dst.clear();
 			dst.reserve(_rects.size());
@@ -439,6 +441,7 @@ namespace fbp {
 		const vector<Rect> &_src;
 		vector<Rect> _dst;
 		int _min_bin_height;
+		float _best_fill_ratio;
 
 		/// 排序规则定义
 		struct SortRule {

@@ -11,7 +11,7 @@ void test_floorplan_bin_pack(const Instance &ins, const QAPCluster &cluster) {
 
 	// 计算分组信息
 	vector<rbp::Rect> src = ins.get_rects();
-	for (auto &rect : src) { rect.gid = cluster.qap_sol.at(cluster.part.at(rect.id)); }
+	for (auto &rect : src) { rect.gid = cluster.qap_sol.at(cluster.part.at(rect.id)) - 1; }
 	vector<vector<bool>> group_neighbors = cluster.cal_group_neighbors();
 	vector<rbp::Boundary> group_boundaries = cluster.cal_group_boundaries(bin_width, bin_height);
 
@@ -28,92 +28,132 @@ void test_floorplan_bin_pack(const Instance &ins, const QAPCluster &cluster) {
 	else { printf("Successful! Occupancy Ratio: %.2f%%\n", fbp_solver.Occupancy()*100.f); }
 }
 
+/// 基于排列组合生成候选宽度组合
+/// Calculate the set of candidate widths W: 2c_n1 + 2²c_n2 + 2³c_n3 + ...
+/// 不需要从k=1开始计算组合数，通过[miniterms, maxiterms]参数控制；论文设置maxiterms=3,4,6
+vector<int> calculate_candidate_widths_on_combination(const vector<fbp::Rect> &src, int miniterms = 2, int maxiterms = 6) {
+	unordered_set<int> candidate_widths;
+	vector<int> rects(src.size());
+	iota(rects.begin(), rects.end(), 0);
+	for (int k = miniterms; k <= maxiterms; ++k) { // 利用组合数性质计算一半即可.
+		utils::Combination kth_comb_rects(rects, k);
+		vector<int> comb_rects, ncomb_rects;
+		while (kth_comb_rects.next_combination(comb_rects, ncomb_rects)) {
+			/// Ⅰ. 不考虑旋转，短边之和为一个候选宽度组合
+			int cw = 0, ncw = 0;
+			for (int r : comb_rects) { cw += src.at(r).width; }
+			candidate_widths.insert(cw);
+			for (int nr : ncomb_rects) { ncw += src.at(nr).width; }
+			candidate_widths.insert(ncw);
+
+			/// Ⅱ. 考虑旋转，复杂度太高，不可避免重复计算
+			//for (int kk = 1; kk <= comb_rects.size() / 2; ++kk) {
+			//	utils::Combination kth_rotated_rects(comb_rects, kk);
+			//	vector<int> rotated_rects, nrotated_rects;
+			//	while (kth_rotated_rects.next_combination(rotated_rects, nrotated_rects)) {
+			//		int rcw = 0, nrcw = 0;
+			//		for (int r : rotated_rects) { rcw += src.at(r).height; }
+			//		for (int nr : nrotated_rects) { rcw += src.at(nr).width; }
+			//		candidate_widths.insert(rcw);
+			//		for (int nr : rotated_rects) { nrcw += src.at(nr).width; }
+			//		for (int r : nrotated_rects) { nrcw += src.at(r).height; }
+			//		candidate_widths.insert(nrcw);
+			//	}
+			//}
+			//for (int kk = 1; kk <= ncomb_rects.size() / 2; ++kk) {
+			//	utils::Combination kth_rotated_rects(ncomb_rects, kk);
+			//	vector<int> rotated_rects, nrotated_rects;
+			//	while (kth_rotated_rects.next_combination(rotated_rects, nrotated_rects)) {
+			//		int rcw = 0, nrcw = 0;
+			//		for (int r : rotated_rects) { rcw += src.at(r).height; }
+			//		for (int nr : nrotated_rects) { rcw += src.at(nr).width; }
+			//		candidate_widths.insert(rcw);
+			//		for (int nr : rotated_rects) { nrcw += src.at(nr).width; }
+			//		for (int r : nrotated_rects) { nrcw += src.at(r).height; }
+			//		candidate_widths.insert(nrcw);
+			//	}
+			//}
+		}
+	}
+	return vector<int>(candidate_widths.begin(), candidate_widths.end());
+}
+
+/// 在区间[W_min, W_max]内，等距地生成候选宽度
+/// alpha取值范围：[1.0, 1.05, 1.1, 1.15, 1.2]
+vector<int> calculate_candidate_widths_on_interval(const vector<rbp::Rect> &src, int area, double alpha = 1.05, int interval = 1) {
+	int min_cw = max_element(src.begin(), src.end(), [](auto &lhs, auto &rhs) { return lhs.height < rhs.height; })->height;
+	int max_cw = floor(sqrt(area) * alpha);
+	vector<int> candidate_widths;
+	candidate_widths.reserve(max_cw - min_cw + 1);
+	for (int cw = min_cw; cw <= max_cw; cw += interval) { candidate_widths.push_back(cw); }
+	return candidate_widths;
+}
+
 /// 候选宽度定义
-struct CandidateWidth {
+struct CandidateWidthObj {
 	int value;
 	int iter;
-	float fill_ratio;
 	unique_ptr<fbp::FloorplanBinPack> fbp_solver;
 };
 
 void adaptive_selection(const Instance &ins, const QAPCluster &cluster, fbp::FloorplanBinPack::LevelGroupSearch method) {
 	// 计算分组信息
 	vector<rbp::Rect> src = ins.get_rects();
-	for (auto &rect : src) { rect.gid = cluster.qap_sol.at(cluster.part.at(rect.id)); }
+	for (auto &rect : src) { rect.gid = cluster.qap_sol.at(cluster.part.at(rect.id)) - 1; }
 	vector<vector<bool>> group_neighbors = cluster.cal_group_neighbors();
 
 	// 参数设置
-	int iter_ub = 9999;           // 最大迭代次数
+	int ub_iter = 9999;           // 最大迭代次数
 	float best_fill_ratio = 0.5f; // 贪心算法或者人为设置一个初始填充率
 	vector<fbp::Rect> best_dst;
 
-	// Calculate the set of candidate widths W: 2c_n1 + 2²c_n2 + 2³c_n3 + ...
 	cout << "==== Calculate the set of candidate widths W ====" << endl;
-	vector<int> comb_widths;
-	vector<int> rects(src.size());
-	iota(rects.begin(), rects.end(), 0);
-	for (int k = 1; k <= rects.size(); ++k) {
-		vector<int> comb_rects, ncomb_rects;
-		while (utils::next_combination(rects, rects.size(), k, comb_rects, ncomb_rects)) {
-			for (int kk = 1; kk <= comb_rects.size(); ++kk) {
-				vector<int> rotated_rects, nrotated_rects;
-				while (utils::next_combination(comb_rects, comb_rects.size(), kk, rotated_rects, nrotated_rects)) {
-					comb_widths.resize(comb_widths.size() + 1, 0);
-					for (int r : rotated_rects) { comb_widths.back() += src.at(r).height; }
-					for (int nr : nrotated_rects) { comb_widths.back() += src.at(nr).width; }
-				}
-			}
+	//vector<int> candidate_widths = calculate_candidate_widths_on_combination(src);
+	vector<int> candidate_widths = calculate_candidate_widths_on_interval(src, ins.get_total_area());
+	cout << candidate_widths.size() << endl;
+
+	vector<CandidateWidthObj> cw_objs;
+	for (int bin_width : candidate_widths) {
+		int bin_height = ceil(ins.get_total_area() / (bin_width * best_fill_ratio)); // 向上取整
+		vector<rbp::Boundary> group_boundaries = cluster.cal_group_boundaries(bin_width, bin_height);
+		cw_objs.push_back({ bin_width, 1, unique_ptr<fbp::FloorplanBinPack>(
+			new fbp::FloorplanBinPack(src, group_neighbors, group_boundaries, bin_width, bin_height)) });
+		cw_objs.back().fbp_solver->random_local_search(1, method);
+		if (cw_objs.back().fbp_solver->get_fill_ratio() > best_fill_ratio) {
+			best_fill_ratio = cw_objs.back().fbp_solver->get_fill_ratio();
+			best_dst = cw_objs.back().fbp_solver->get_dst();
+			cout << best_fill_ratio << endl;
 		}
 	}
-	cout << comb_widths.size() << endl;
-	cout << unordered_set<int>(comb_widths.begin(), comb_widths.end()).size() << endl;
+	// Sort each width in W by the increasing filling ratio
+	sort(cw_objs.begin(), cw_objs.end(), [](auto &lhs, auto &rhs) {
+		return lhs.fbp_solver->get_fill_ratio() < rhs.fbp_solver->get_fill_ratio(); });
 
-	//unordered_set<int> visited_widths;
-	//vector<CandidateWidth> candidate_widths;
-	//for (int cw : comb_widths) {
+	while (true) { // [todo] time limit is not exceeded
+		static default_random_engine gen(random_device{}());
+		vector<int> probs;
+		probs.reserve(cw_objs.size());
+		for (int i = 1; i <= cw_objs.size(); ++i) { probs.push_back(2 * i); }
+		discrete_distribution<> discrete_dist(probs.begin(), probs.end());
 
-	//	int bin_width = cw; // [todo]
-	//	if (visited_widths.find(bin_width) != visited_widths.end()) { continue; }
-	//	visited_widths.insert(bin_width);
+		CandidateWidthObj &picked_width = cw_objs[discrete_dist(gen)];
+		int new_bin_height = ceil(ins.get_total_area() / (picked_width.value * best_fill_ratio)); // 向上取整
+		vector<rbp::Boundary> new_group_boundaries = cluster.cal_group_boundaries(picked_width.value, new_bin_height);
+		picked_width.iter = min(2 * picked_width.iter, ub_iter);
+		picked_width.fbp_solver->update_bin_height(new_bin_height, new_group_boundaries);
+		picked_width.fbp_solver->random_local_search(picked_width.iter, method);
+		if (picked_width.fbp_solver->get_fill_ratio() > best_fill_ratio) {
+			best_fill_ratio = picked_width.fbp_solver->get_fill_ratio();
+			best_dst = picked_width.fbp_solver->get_dst();
+			cout << best_fill_ratio << endl;
+		}
+		sort(cw_objs.begin(), cw_objs.end(), [](auto &lhs, auto &rhs) {
+			return lhs.fbp_solver->get_fill_ratio() < rhs.fbp_solver->get_fill_ratio(); });
+	}
 
-	//	int bin_height = ceil(ins.get_total_area() / (bin_width * best_fill_ratio)); // 向上取整
-	//	vector<rbp::Boundary> group_boundaries = cluster.cal_group_boundaries(bin_width, bin_height);
-	//	candidate_widths.push_back({ bin_width, 1, best_fill_ratio, unique_ptr<fbp::FloorplanBinPack>(
-	//		new fbp::FloorplanBinPack(src, group_neighbors, group_boundaries, bin_width, bin_height)) });
-	//	candidate_widths.back().fbp_solver->random_local_search(1, method);
-	//	candidate_widths.back().fill_ratio = candidate_widths.back().fbp_solver->get_fill_ratio();
-	//	if (candidate_widths.back().fill_ratio > best_fill_ratio) {
-	//		best_fill_ratio = candidate_widths.back().fill_ratio;
-	//		best_dst = candidate_widths.back().fbp_solver->get_dst();
-	//	}
-	//}
-	//// Sort each width in W by the increasing filling ratio
-	//sort(candidate_widths.begin(), candidate_widths.end(), [](auto &lhs, auto &rhs) { return lhs.fill_ratio < rhs.fill_ratio; });
-
-	//while (true) { // [todo] time limit is not exceeded
-	//	static default_random_engine gen(random_device{}());
-	//	vector<int> probs;
-	//	probs.reserve(candidate_widths.size());
-	//	for (int i = 1; i <= candidate_widths.size(); ++i) { probs.push_back(2 * i); }
-	//	discrete_distribution<> discrete_dist(probs.begin(), probs.end());
-
-	//	CandidateWidth &picked_width = candidate_widths[discrete_dist(gen)];
-	//	int new_bin_height = ceil(ins.get_total_area() / (picked_width.value * best_fill_ratio)); // 向上取整
-	//	vector<rbp::Boundary> new_group_boundaries = cluster.cal_group_boundaries(picked_width.value, new_bin_height);
-	//	picked_width.iter = min(2 * picked_width.iter, iter_ub);
-	//	picked_width.fbp_solver->update_bin_height(new_bin_height, new_group_boundaries);
-	//	picked_width.fbp_solver->random_local_search(picked_width.iter, method);
-	//	picked_width.fill_ratio = picked_width.fbp_solver->get_fill_ratio();
-	//	if (picked_width.fill_ratio > best_fill_ratio) {
-	//		best_fill_ratio = picked_width.fill_ratio;
-	//		best_dst = picked_width.fbp_solver->get_dst();
-	//	}
-	//	sort(candidate_widths.begin(), candidate_widths.end(), [](auto &lhs, auto &rhs) { return lhs.fill_ratio < rhs.fill_ratio; });
-	//}
-
-	// return best found solution
-	// best_dst;
-	// best_fill_ratio;
+	//return best found solution
+	//best_dst;
+	cout << best_fill_ratio << endl;
 }
 
 int main(int argc, char **argv) {
@@ -132,8 +172,7 @@ int main(int argc, char **argv) {
 
 	//test_floorplan_bin_pack(ins, cluster);
 
-	adaptive_selection(ins, cluster, fbp::FloorplanBinPack::LevelGroupSearch::LevelSelfishly);
-
+	adaptive_selection(ins, cluster, fbp::FloorplanBinPack::LevelGroupSearch::LevelNeighborAll);
 
 	system("pause");
 	return 0;

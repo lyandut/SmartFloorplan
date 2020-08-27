@@ -13,6 +13,14 @@ namespace utils {
 
 	using namespace std;
 
+	// 跳过文件中的n行 
+	static void skip(FILE *file, int line_num) {
+		char linebuf[1000];
+		for (int i = 0; i < line_num; ++i) {
+			fgets(linebuf, sizeof(linebuf), file); // skip
+		}
+	}
+
 	class Date {
 	public:
 		// 返回表示日期格式的字符串，年-月-日
@@ -32,68 +40,65 @@ namespace utils {
 		}
 	};
 
-	// 跳过文件中的n行 
-	static void skip(FILE *file, int line_num) {
-		char linebuf[1000];
-		for (int i = 0; i < line_num; ++i) {
-			fgets(linebuf, sizeof(linebuf), file); // skip
-		}
-	}
+	class Combination {
+	public:
+		Combination(const vector<int> &a, int k) : _a(a), _n(a.size()), _k(k), _index(a.size(), false), _first_comb(true) {}
 
-	// '01'法求组合问题 [todo] bug只能调用一次
-	bool next_combination(const vector<int> &a, int n, int k, vector<int> &comb, vector<int> &ncomb) {
-		static vector<bool> index(n, false);
-		static bool first_comb = true;  // 第一个组合：选中前k个位置
-		static auto has_done = [=]() {  // 终止条件：  最后k个位置全变成1
-			for (int i = n - 1; i >= n - k; i--)
-				if (!index[i])
-					return false;
-			return true;
-		};
-
-		if (first_comb) {
-			for (int i = 0; i < k; ++i) { index[i] = true; }
-			comb.clear(); comb.reserve(k);
-			ncomb.clear(); ncomb.reserve(n - k);
-			for (int i = 0; i < n; ++i) {
-				if (index[i])
-					comb.push_back(a[i]);
-				else
-					ncomb.push_back(a[i]);
+		bool next_combination(vector<int> &comb, vector<int> &ncomb) {
+			if (_first_comb) { // 第一个组合：选中前k个位置
+				_first_comb = false;
+				for (int i = 0; i < _k; ++i) { _index[i] = true; }
+				record_combination(comb, ncomb);
+				return true;
 			}
-			first_comb = false;
-			return true;
-		}
 
-		if (!has_done()) {
-			for (int i = 0; i < n - 1; ++i) {
-				// 找到第一个“10”组合将其变成"01"组合
-				if (index[i] && !index[i + 1]) {
-					index[i] = false;
-					index[i + 1] = true;
-					// 将"01"组合左边的1移到最左边
-					int count = 0;
-					for (int j = 0; j < i; ++j) {
-						if (index[j]) {
-							index[j] = false;
-							index[count++] = true;
+			if (!has_done()) {
+				for (int i = 0; i < _n - 1; ++i) {
+					// 找到第一个“10”组合将其变成"01"组合
+					if (_index[i] && !_index[i + 1]) {
+						_index[i] = false;
+						_index[i + 1] = true;
+						// 将"01"组合左边的1移到最左边
+						int count = 0;
+						for (int j = 0; j < i; ++j) {
+							if (_index[j]) {
+								_index[j] = false;
+								_index[count++] = true;
+							}
 						}
+						record_combination(comb, ncomb);
+						return true;
 					}
-					// 记录当前组合
-					comb.clear();
-					ncomb.clear();
-					for (int l = 0; l < n; ++l) {
-						if (index[l])
-							comb.push_back(a[l]);
-						else
-							ncomb.push_back(a[l]);
-					}
-						
-					return true;
 				}
 			}
+
+			return false;
 		}
 
-		return false;
-	}
+	private:
+		bool has_done() const { // 终止条件：最后k个位置全变成1
+			for (int i = _n - 1; i >= _n - _k; --i)
+				if (!_index[i])
+					return false;
+			return true;
+		}
+
+		void record_combination(vector<int> &comb, vector<int> &ncomb) const {
+			comb.clear(); comb.reserve(_k);
+			ncomb.clear(); ncomb.reserve(_n - _k);
+			for (int i = 0; i < _n; ++i) {
+				if (_index[i])
+					comb.push_back(_a[i]);
+				else
+					ncomb.push_back(_a[i]);
+			}
+		}
+
+	private:
+		const vector<int> &_a;
+		const int _n;
+		const int _k;
+		vector<bool> _index;
+		bool _first_comb;
+	};
 }
