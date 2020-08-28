@@ -22,23 +22,17 @@ public:
 	Environment(const string &bench, const string &type, const string &name) :
 		_ins_bench(bench), _ins_type(type), _ins_name(name) {}
 
-	string blocks_path() { return instance_dir() + benchmark_dir() + type_dir() + _ins_name + ".blocks"; }
-	string nets_path() { return instance_dir() + benchmark_dir() + type_dir() + _ins_name + ".nets"; }
-	string pl_path() { return instance_dir() + benchmark_dir() + type_dir() + _ins_name + ".pl"; }
-	string solution_path() { return solution_dir() + _ins_name; }
-	string solution_path_with_time() { return  solution_dir() + _ins_name + "." + utils::Date::to_detail_str(); }
+	string blocks_path() const { return instance_dir() + benchmark_dir() + type_dir() + _ins_name + ".blocks"; }
+	string nets_path() const { return instance_dir() + benchmark_dir() + type_dir() + _ins_name + ".nets"; }
+	string pl_path() const { return instance_dir() + benchmark_dir() + type_dir() + _ins_name + ".pl"; }
+	string solution_path() const { return solution_dir() + _ins_name; }
+	string solution_path_with_time() const { return  solution_dir() + _ins_name + "." + utils::Date::to_detail_str(); }
 
 private:
 	static string instance_dir() { return "Instance/"; }
 	static string solution_dir() { return "Solution/"; }
-	string benchmark_dir() {
-		if (_ins_bench == "MCNC") { return "MCNCbench/"; }
-		else { return "GSRCbench/"; }
-	}
-	string type_dir() {
-		if (_ins_type == "H") { return "HARD/"; }
-		else { return "SOFT/"; }
-	}
+	string benchmark_dir() const { return _ins_bench == "MCNC" ? "MCNCbench/" : "GSRCbench/"; }
+	string type_dir() const { return _ins_type == "H" ? "HARD/" : "SOFT/"; }
 
 private:
 	string _ins_bench;
@@ -67,13 +61,7 @@ struct Net {
 
 class Instance {
 public:
-	Instance(Environment &env) : _env(env) {}
-
-	void read_instance() {
-		read_blocks();
-		read_nets();
-		read_pl();
-	}
+	Instance(const Environment &env) : _env(env) { read_instance(); }
 
 	/// 待打包矩形列表，默认w≤h减少后续计算增加无用判断
 	vector<rbp::Rect> get_rects() const {
@@ -81,9 +69,9 @@ public:
 		rects.reserve(_block_num);
 		for (int i = 0; i < _block_num; ++i) {
 			rects.push_back({ i, 0,
-				_blocks[i].x_coordinate, 
+				_blocks[i].x_coordinate,
 				_blocks[i].y_coordinate,
-				min(_blocks[i].width, _blocks[i].height), 
+				min(_blocks[i].width, _blocks[i].height),
 				max(_blocks[i].width, _blocks[i].height) });
 		}
 		return rects;
@@ -95,6 +83,12 @@ public:
 	const vector<Net> & get_net_list() const { return _nets; }
 
 private:
+	void read_instance() {
+		read_blocks();
+		read_nets();
+		read_pl();
+	}
+
 	/// read .blocks file.
 	void read_blocks() {
 		auto file = fopen(_env.blocks_path().c_str(), "r");
@@ -210,7 +204,7 @@ private:
 	}
 
 private:
-	Environment &_env;
+	const Environment &_env;
 
 	// blocks info
 	vector<Block> _blocks;

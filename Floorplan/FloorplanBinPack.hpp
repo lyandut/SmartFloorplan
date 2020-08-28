@@ -8,7 +8,6 @@
 #include <random>
 #include <numeric>
 
-#include "Instance.hpp"
 #include "SkylineBinPack.hpp"
 
 namespace fbp {
@@ -18,17 +17,28 @@ namespace fbp {
 	class FloorplanBinPack final : public SkylineBinPack {
 
 	public:
+		/// 分组搜索策略
+		enum LevelGroupSearch {
+			LevelNone,		      // 不分组
+			LevelSelfishly,       // 仅当前分组
+			LevelNeighborAll,     // 当前分组和全部邻居分组
+			LevelNeighborPartial  // [todo] 当前分组和左/下邻居分组，或可考虑按百分比选取一部分矩形
+		};
+
+		/// [deprecated] 放置策略
+		enum LevelHeuristicSearch {
+			LevelMinHeightFit,    // 最小高度rectangle，不考虑靠skyline右侧放置
+			LevelMinWasteFit,     // 最小浪费rectangle，不考虑靠skyline右侧放置
+			LevelBottomLeftScore  // 最下最左skyline，考虑靠skyline右侧放置
+		};
+
 		FloorplanBinPack() = delete;
 
 		FloorplanBinPack(const vector<Rect> &src, const vector<vector<bool>> &group_neighbors,
-			vector<Boundary> &group_boundaries, int bin_width) :
+			vector<Boundary> &group_boundaries, int bin_width, default_random_engine &gen) :
 			_src(src), _group_neighbors(group_neighbors), _group_boundaries(group_boundaries),
-			SkylineBinPack(bin_width, INF, false) { // binHeight = INF; 转为完成SP
-
-			_min_bin_height = numeric_limits<int>::max();
-
-			_seed = random_device{}(); // set random seed
-
+			SkylineBinPack(bin_width, INF, false), // binHeight = INF; 转为完成SP
+			_gen(gen), _min_bin_height(numeric_limits<int>::max()), _uniform_dist(0, _src.size() - 1) {
 			init_sort_rules();
 		}
 
@@ -38,21 +48,6 @@ namespace fbp {
 
 		/// 高度上界变化导致分组边界变化
 		void update_group_boundaries(const vector<Boundary> &new_boundaries) { _group_boundaries = new_boundaries; }
-
-		/// 分组搜索策略
-		enum LevelGroupSearch {
-			LevelNone,		      // 不分组
-			LevelSelfishly,       // 仅当前分组
-			LevelNeighborAll,     // 当前分组和全部邻居分组
-			LevelNeighborPartial  // [todo] 当前分组和左/下邻居分组，或可考虑按百分比选取一部分矩形
-		};
-
-		/// 放置策略
-		enum LevelHeuristicSearch {
-			LevelMinHeightFit,    // 最小高度rectangle，不考虑靠skyline右侧放置
-			LevelMinWasteFit,     // 最小浪费rectangle，不考虑靠skyline右侧放置
-			LevelBottomLeftScore  // 最下最左skyline，考虑靠skyline右侧放置
-		};
 
 		/// 基于binWidth进行随机局部搜索，返回最小高度
 		void random_local_search(int iter, LevelGroupSearch method) {
@@ -72,13 +67,7 @@ namespace fbp {
 			}
 
 			// 构造初始解
-			static default_random_engine gen(_seed);
-			vector<int> probs;
-			probs.reserve(_sort_rules.size());
-			for (int i = 1; i <= _sort_rules.size(); ++i) { probs.push_back(2 * i); }
-			discrete_distribution<> discrete_dist(probs.begin(), probs.end());
-
-			SortRule &picked_rule = _sort_rules[discrete_dist(gen)];
+			SortRule &picked_rule = _sort_rules[_discrete_dist(_gen)];
 			_rects.assign(picked_rule.sequence.begin(), picked_rule.sequence.end());
 			vector<Rect> target_dst;
 			picked_rule.target_height = min(picked_rule.target_height, insert_bottom_left_score(target_dst, method));
@@ -91,10 +80,9 @@ namespace fbp {
 			// 迭代优化
 			for (int i = 1; i <= iter; ++i) {
 				SortRule new_rule = picked_rule;
-				uniform_int_distribution<> uniform_dist(0, new_rule.sequence.size() - 1);
-				int a = uniform_dist(gen);
-				int b = uniform_dist(gen);
-				while (a == b) { b = uniform_dist(gen); }
+				int a = _uniform_dist(_gen);
+				int b = _uniform_dist(_gen);
+				while (a == b) { b = _uniform_dist(_gen); }
 				swap(new_rule.sequence[a], new_rule.sequence[b]);
 				_rects.assign(new_rule.sequence.begin(), new_rule.sequence.end());
 				vector<Rect> target_dst;
@@ -237,10 +225,14 @@ namespace fbp {
 			sort(_sort_rules[3].sequence.begin(), _sort_rules[3].sequence.end(), [this](int lhs, int rhs) {
 				return _src.at(lhs).width > _src.at(rhs).width; });
 			// 4_随机排序
-			shuffle(_sort_rules[4].sequence.begin(), _sort_rules[4].sequence.end(), mt19937{ _seed });
+			shuffle(_sort_rules[4].sequence.begin(), _sort_rules[4].sequence.end(), _gen);
 
-			// 默认赋给_rect输入顺序，用于测试贪心算法
+			// 默认赋给_rect输入顺序，可用于测试贪心算法
 			_rects.assign(_sort_rules[0].sequence.begin(), _sort_rules[0].sequence.end());
+
+			vector<int> probs; probs.reserve(_sort_rules.size());
+			for (int i = 1; i <= _sort_rules.size(); ++i) { probs.push_back(2 * i); }
+			_discrete_dist = discrete_distribution<>(probs.begin(), probs.end());
 		}
 
 		/// 基于分组策略挑选候选矩形，减小搜索规模
@@ -451,13 +443,13 @@ namespace fbp {
 		};
 		vector<SortRule> _sort_rules; // 排序规则列表，用于随机局部搜索
 		list<int> _rects;			  // SortRule的sequence，相当于指针，使用list快速删除，放置完毕为空
+		discrete_distribution<> _discrete_dist;   // 离散概率分布，用于挑选规则(即挑选sequence赋给_rects)
+		uniform_int_distribution<> _uniform_dist; // 均匀分布，用于交换矩形顺序
 
 		/// 分组信息，用于挑选候选矩形 `get_candidate_rects()`
 		const vector<vector<bool>> &_group_neighbors; // `_group_neighbors[i][j]` 分组_i和_j是否为邻居
+		vector<Boundary> _group_boundaries;           // `_group_boundaries[i]`   分组_i的边界
 
-		public:
-		vector<Boundary> _group_boundaries;          // `_group_boundaries[i]`   分组_i的边界
-
-		unsigned int _seed;
+		default_random_engine &_gen;
 	};
 }

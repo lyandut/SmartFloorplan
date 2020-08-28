@@ -167,6 +167,7 @@
     <ClCompile Include="Main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AdaptiveSelection.hpp" />
     <ClInclude Include="GuillotineBinPack.hpp" />
     <ClInclude Include="FloorplanBinPack.hpp">
       <SubType>

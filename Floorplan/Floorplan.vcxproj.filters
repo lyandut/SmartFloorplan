@@ -15,22 +15,19 @@
     <Filter Include="Utils">
       <UniqueIdentifier>{f767a38a-d169-485b-8c10-457c65a60750}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Algorithm\bottom">
+      <UniqueIdentifier>{10dc61ae-f593-457f-a4d3-6de328cb87b4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Algorithm\top">
+      <UniqueIdentifier>{a22488d3-c559-4897-bfe7-06fb4574f5cc}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="FloorplanBinPack.hpp">
-      <Filter>Algorithm</Filter>
-    </ClInclude>
     <ClInclude Include="Rect.hpp">
       <Filter>Data</Filter>
-    </ClInclude>
-    <ClInclude Include="GuillotineBinPack.hpp">
-      <Filter>Algorithm</Filter>
-    </ClInclude>
-    <ClInclude Include="SkylineBinPack.hpp">
-      <Filter>Algorithm</Filter>
     </ClInclude>
     <ClInclude Include="Instance.hpp">
       <Filter>Data</Filter>
@@ -38,8 +35,20 @@
     <ClInclude Include="Utils.hpp">
       <Filter>Utils</Filter>
     </ClInclude>
+    <ClInclude Include="FloorplanBinPack.hpp">
+      <Filter>Algorithm\bottom</Filter>
+    </ClInclude>
+    <ClInclude Include="GuillotineBinPack.hpp">
+      <Filter>Algorithm\bottom</Filter>
+    </ClInclude>
+    <ClInclude Include="SkylineBinPack.hpp">
+      <Filter>Algorithm\bottom</Filter>
+    </ClInclude>
     <ClInclude Include="QAPCluster.hpp">
-      <Filter>Algorithm</Filter>
+      <Filter>Algorithm\top</Filter>
+    </ClInclude>
+    <ClInclude Include="AdaptiveSelection.hpp">
+      <Filter>Algorithm\top</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
