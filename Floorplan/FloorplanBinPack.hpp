@@ -21,9 +21,9 @@ namespace fbp {
 		FloorplanBinPack() = delete;
 
 		FloorplanBinPack(const vector<Rect> &src, const vector<vector<bool>> &group_neighbors,
-			vector<Boundary> &group_boundaries, int bin_width, int bin_height) :
+			vector<Boundary> &group_boundaries, int bin_width) :
 			_src(src), _group_neighbors(group_neighbors), _group_boundaries(group_boundaries),
-			SkylineBinPack(bin_width, bin_height, false) {
+			SkylineBinPack(bin_width, INF, false) { // binHeight = INF; 转为完成SP
 
 			_min_bin_height = numeric_limits<int>::max();
 
@@ -36,14 +36,12 @@ namespace fbp {
 
 		float get_fill_ratio() const { return _best_fill_ratio; }
 
-		/// 固定宽度，更新高度
-		void update_bin_height(int new_height, const vector<Boundary> &new_boundaries) {
-			binHeight = new_height;
-			_group_boundaries = new_boundaries;
-		}
+		/// 高度上界变化导致分组边界变化
+		void update_group_boundaries(const vector<Boundary> &new_boundaries) { _group_boundaries = new_boundaries; }
 
 		/// 分组搜索策略
 		enum LevelGroupSearch {
+			LevelNone,		      // 不分组
 			LevelSelfishly,       // 仅当前分组
 			LevelNeighborAll,     // 当前分组和全部邻居分组
 			LevelNeighborPartial  // [todo] 当前分组和左/下邻居分组，或可考虑按百分比选取一部分矩形
@@ -140,8 +138,8 @@ namespace fbp {
 				int best_rect_index = -1;
 				Rect best_node = find_rect_for_skyline_bottom_left(best_skyline_index, candidate_rects, best_rect_index);
 
-				// 没有矩形能放下
-				if (best_rect_index == -1) { return binHeight + 1; }
+				// 所有矩形必能放下
+				assert(best_rect_index != -1);
 
 				// 执行放置
 				debug_assert(disjointRects.Disjoint(best_node));
@@ -206,8 +204,8 @@ namespace fbp {
 					}
 				}
 
-				// 没有矩形能放下
-				if (best_rect_index == -1) { return binHeight + 1; }
+				// 所有矩形必能放下
+				assert(best_rect_index != -1);
 
 				// 执行放置
 				debug_assert(disjointRects.Disjoint(best_node));
@@ -277,6 +275,9 @@ namespace fbp {
 						candidate_rects.push_back(r);
 					}
 				}
+				break;
+			case LevelGroupSearch::LevelNone:
+				candidate_rects = _rects;
 				break;
 			default:
 				assert(false);
@@ -451,9 +452,11 @@ namespace fbp {
 		vector<SortRule> _sort_rules; // 排序规则列表，用于随机局部搜索
 		list<int> _rects;			  // SortRule的sequence，相当于指针，使用list快速删除，放置完毕为空
 
-		/// 分组信息
-		const vector<vector<bool>> &_group_neighbors; // `_group_neighbors[i][j]` 分组_i和_j是否为邻居	public:
-		vector<Boundary> &_group_boundaries;          // `_group_boundaries[i]`   分组_i的边界
+		/// 分组信息，用于挑选候选矩形 `get_candidate_rects()`
+		const vector<vector<bool>> &_group_neighbors; // `_group_neighbors[i][j]` 分组_i和_j是否为邻居
+
+		public:
+		vector<Boundary> _group_boundaries;          // `_group_boundaries[i]`   分组_i的边界
 
 		unsigned int _seed;
 	};

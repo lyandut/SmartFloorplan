@@ -9,6 +9,8 @@
 #include <sstream>
 #include <iomanip>
 
+const int INF = 0x3f3f3f3f;
+
 namespace utils {
 
 	using namespace std;
