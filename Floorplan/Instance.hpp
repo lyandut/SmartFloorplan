@@ -14,6 +14,7 @@
 
 #include "Rect.hpp"
 #include "Utils.hpp"
+#include "Config.hpp"
 
 using namespace std;
 
@@ -63,7 +64,7 @@ class Instance {
 public:
 	Instance(const Environment &env) : _env(env) { read_instance(); }
 
-	/// 待打包矩形列表，默认w≤h减少后续计算增加无用判断
+	/// 待打包矩形列表，默认w≤h避免后续计算增加无用判断
 	vector<rbp::Rect> get_rects() const {
 		vector<rbp::Rect> rects;
 		rects.reserve(_block_num);
@@ -77,10 +78,13 @@ public:
 		return rects;
 	}
 
+	const vector<Block> & get_blocks() const { return _blocks; }
+	const vector<Terminal> & get_terminals() const { return _terminals; }
+	const vector<Net> & get_net_list() const { return _nets; }
+
 	int get_block_num() const { return _block_num; }
 	int get_block_area(int i) const { return _blocks[i].area; }
 	int get_total_area() const { return _total_area; }
-	const vector<Net> & get_net_list() const { return _nets; }
 
 private:
 	void read_instance() {

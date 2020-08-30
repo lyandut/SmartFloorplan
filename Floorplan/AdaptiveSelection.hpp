@@ -13,30 +13,11 @@
 using namespace fbp;
 using namespace qapc;
 
-/// 算法参数设置
-struct Configuration {
-	unsigned int random_seed; // 随机种子，release版本使用`random_device{}();`
-	float init_fill_ratio;    // 初始填充率，建议0.5f
-	int ub_time;              // ASA超时时间
-	int dimension;            // QAP分组维度. e.g.dimension=5则划分25个分组
-	int ub_iter;              // RLS最大迭代次数
-
-	enum LevelCandidateWidth {
-		CombRotate, // 考虑组合及旋转的所有情况
-		CombShort,  // 考虑短边的组合
-		Interval    // 以间隔等距划分宽度区间
-	};
-	LevelCandidateWidth level_cw;                    // 建议Interval
-	QAPCluster::LevelMetis level_flow;               // 建议Kway
-	QAPCluster::LevelDistance level_dis;             // ALL
-	FloorplanBinPack::LevelGroupSearch level_gs;     // ALL
-};
-
 class AdaptiveSelection {
 
 public:
 
-	AdaptiveSelection(const Environment &env, const Configuration &cfg) :
+	AdaptiveSelection(const Environment &env, const Config &cfg) :
 		_env(env), _cfg(cfg), _ins(_env), _cluster(_ins, _cfg.dimension),
 		_gen(_cfg.random_seed), _best_fill_ratio(_cfg.init_fill_ratio) {}
 
@@ -51,20 +32,20 @@ public:
 		vector<Rect> src = _ins.get_rects();
 
 		// 计算分组信息
-		_cluster.cal_qap_sol(_cluster.cal_flow_matrix(_cfg.level_flow), _cluster.cal_distance_matrix(_cfg.level_dis));
+		_cluster.cal_qap_sol(_cluster.cal_flow_matrix(_cfg.level_qapc_flow), _cluster.cal_distance_matrix(_cfg.level_qapc_dis));
 		for (auto &rect : src) { rect.gid = _cluster.qap_sol.at(_cluster.part.at(rect.id)) - 1; }
 		vector<vector<bool>> group_neighbors = _cluster.cal_group_neighbors();
 
 		// Calculate the set of candidate widths W
 		vector<int> candidate_widths;
-		switch (_cfg.level_cw) {
-		case Configuration::LevelCandidateWidth::CombRotate:
+		switch (_cfg.level_asa_cw) {
+		case Config::LevelCandidateWidth::CombRotate:
 			candidate_widths = cal_candidate_widths_on_combrotate(src);
 			break;
-		case Configuration::LevelCandidateWidth::CombShort:
+		case Config::LevelCandidateWidth::CombShort:
 			candidate_widths = cal_candidate_widths_on_combshort(src);
 			break;
-		case Configuration::LevelCandidateWidth::Interval:
+		case Config::LevelCandidateWidth::Interval:
 			candidate_widths = cal_candidate_widths_on_interval(src);
 			break;
 		default:
@@ -79,7 +60,7 @@ public:
 			vector<Boundary> group_boundaries = _cluster.cal_group_boundaries(bin_width, bin_height);
 			cw_objs.push_back({ bin_width, 1, unique_ptr<FloorplanBinPack>(
 				new FloorplanBinPack(src, group_neighbors, group_boundaries, bin_width, _gen)) });
-			cw_objs.back().fbp_solver->random_local_search(1, _cfg.level_gs);
+			cw_objs.back().fbp_solver->random_local_search(1, _cfg.level_fbp_gs);
 			if (cw_objs.back().fbp_solver->get_fill_ratio() > _best_fill_ratio) {
 				_best_fill_ratio = cw_objs.back().fbp_solver->get_fill_ratio();
 				_best_dst = cw_objs.back().fbp_solver->get_dst();
@@ -101,7 +82,7 @@ public:
 			vector<Boundary> new_group_boundaries = _cluster.cal_group_boundaries(picked_width.value, new_bin_height);
 			picked_width.iter = min(2 * picked_width.iter, _cfg.ub_iter);
 			picked_width.fbp_solver->update_group_boundaries(new_group_boundaries);
-			picked_width.fbp_solver->random_local_search(picked_width.iter, _cfg.level_gs);
+			picked_width.fbp_solver->random_local_search(picked_width.iter, _cfg.level_fbp_gs);
 			if (picked_width.fbp_solver->get_fill_ratio() > _best_fill_ratio) {
 				_best_fill_ratio = picked_width.fbp_solver->get_fill_ratio();
 				_best_dst = picked_width.fbp_solver->get_dst();
@@ -178,7 +159,7 @@ private:
 
 private:
 	const Environment &_env;
-	const Configuration &_cfg;
+	const Config &_cfg;
 
 	Instance _ins;
 	QAPCluster _cluster;

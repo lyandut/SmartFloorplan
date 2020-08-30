@@ -168,6 +168,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AdaptiveSelection.hpp" />
+    <ClInclude Include="Config.hpp">
+      <SubType>
+      </SubType>
+    </ClInclude>
     <ClInclude Include="GuillotineBinPack.hpp" />
     <ClInclude Include="FloorplanBinPack.hpp">
       <SubType>

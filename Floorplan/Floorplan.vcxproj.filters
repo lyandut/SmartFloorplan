@@ -50,6 +50,9 @@
     <ClInclude Include="AdaptiveSelection.hpp">
       <Filter>Algorithm\top</Filter>
     </ClInclude>
+    <ClInclude Include="Config.hpp">
+      <Filter>Data</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\Deploy\Instance\MCNCbench\HARD\ami33.blocks">

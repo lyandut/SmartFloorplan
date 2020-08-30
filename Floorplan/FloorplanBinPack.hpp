@@ -17,20 +17,6 @@ namespace fbp {
 	class FloorplanBinPack final : public SkylineBinPack {
 
 	public:
-		/// 分组搜索策略
-		enum LevelGroupSearch {
-			LevelNone,		      // 不分组
-			LevelSelfishly,       // 仅当前分组
-			LevelNeighborAll,     // 当前分组和全部邻居分组
-			LevelNeighborPartial  // [todo] 当前分组和左/下邻居分组，或可考虑按百分比选取一部分矩形
-		};
-
-		/// [deprecated] 放置策略
-		enum LevelHeuristicSearch {
-			LevelMinHeightFit,    // 最小高度rectangle，不考虑靠skyline右侧放置
-			LevelMinWasteFit,     // 最小浪费rectangle，不考虑靠skyline右侧放置
-			LevelBottomLeftScore  // 最下最左skyline，考虑靠skyline右侧放置
-		};
 
 		FloorplanBinPack() = delete;
 
@@ -50,7 +36,7 @@ namespace fbp {
 		void update_group_boundaries(const vector<Boundary> &new_boundaries) { _group_boundaries = new_boundaries; }
 
 		/// 基于binWidth进行随机局部搜索，返回最小高度
-		void random_local_search(int iter, LevelGroupSearch method) {
+		void random_local_search(int iter, Config::LevelGroupSearch method) {
 			// the first time to call RLS on W_k
 			if (iter == 1) {
 				for (auto &rule : _sort_rules) {
@@ -101,7 +87,7 @@ namespace fbp {
 			sort(_sort_rules.begin(), _sort_rules.end(), [](auto &lhs, auto &rhs) { return lhs.target_height > rhs.target_height; });
 		}
 
-		int insert_bottom_left_score(vector<Rect> &dst, LevelGroupSearch method) {
+		int insert_bottom_left_score(vector<Rect> &dst, Config::LevelGroupSearch method) {
 			Init(binWidth, binHeight, usedSurfaceArea); // 每次调用重置usedSurfaceArea和skyLine
 			int min_bin_height = 0;
 			dst.clear();
@@ -153,7 +139,7 @@ namespace fbp {
 		}
 
 		/// [deprecated]
-		int insert_greedy_fit(vector<Rect> &dst, LevelHeuristicSearch method) {
+		int insert_greedy_fit(vector<Rect> &dst, Config::LevelHeuristicSearch method) {
 			Init(binWidth, binHeight, usedSurfaceArea); // 每次调用重置usedSurfaceArea和skyLine
 			int min_bin_height = 0;
 			dst.clear();
@@ -169,11 +155,11 @@ namespace fbp {
 					Rect new_node;
 					int score_1, score_2, rect_index;
 					switch (method) {
-					case LevelHeuristicSearch::LevelMinHeightFit:
+					case Config::LevelHeuristicSearch::MinHeightFit:
 						new_node = find_rect_for_skyline_min_height(i, _rects, score_1, score_2, rect_index);
 						debug_assert(disjointRects.Disjoint(new_node));
 						break;
-					case LevelHeuristicSearch::LevelMinWasteFit:
+					case Config::LevelHeuristicSearch::MinWasteFit:
 						new_node = find_rect_for_skyline_min_waste(i, _rects, score_1, score_2, rect_index);
 						debug_assert(disjointRects.Disjoint(new_node));
 						break;
@@ -236,7 +222,7 @@ namespace fbp {
 		}
 
 		/// 基于分组策略挑选候选矩形，减小搜索规模
-		list<int> get_candidate_rects(const SkylineNode &skyline, LevelGroupSearch method) {
+		list<int> get_candidate_rects(const SkylineNode &skyline, Config::LevelGroupSearch method) {
 			int gid = 0;
 			for (; gid < _group_boundaries.size(); ++gid) {
 				if (skyline.x >= _group_boundaries[gid].x && skyline.y >= _group_boundaries[gid].y
@@ -247,12 +233,12 @@ namespace fbp {
 			}
 			list<int> candidate_rects;
 			switch (method) {
-			case LevelGroupSearch::LevelSelfishly:
+			case Config::LevelGroupSearch::Selfishly:
 				for (int r : _rects) { // 必须顺序遍历_rects才能使得sort_rule生效
 					if (_src.at(r).gid == gid) { candidate_rects.push_back(r); }
 				}
 				break;
-			case LevelGroupSearch::LevelNeighborAll:
+			case Config::LevelGroupSearch::NeighborAll:
 				for (int r : _rects) {
 					if (_src.at(r).gid == gid) { candidate_rects.push_back(r); }
 					else if (_group_neighbors[_src.at(r).gid][gid]) {
@@ -260,7 +246,7 @@ namespace fbp {
 					}
 				}
 				break;
-			case LevelGroupSearch::LevelNeighborPartial:
+			case Config::LevelGroupSearch::NeighborPartial:
 				for (int r : _rects) {
 					if (_src.at(r).gid == gid) { candidate_rects.push_back(r); }
 					else if (_group_neighbors[_src.at(r).gid][gid] && _src.at(r).gid < gid) {
@@ -268,7 +254,7 @@ namespace fbp {
 					}
 				}
 				break;
-			case LevelGroupSearch::LevelNone:
+			case Config::LevelGroupSearch::None:
 				candidate_rects = _rects;
 				break;
 			default:

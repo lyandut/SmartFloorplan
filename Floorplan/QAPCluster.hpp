@@ -17,36 +17,20 @@ namespace qapc {
 	class QAPCluster {
 
 	public:
-		enum LevelConnection {
-			Direct,    // 仅考虑直连的边，非直连的边权重定义为 0
-			Indirect   // 考虑非直连的边，非直连的边权重定义为 `1/最短路跳数`
-		};
-
-		enum LevelMetis {
-			Kway,
-			Recursive,
-		};
-
-		enum LevelDistance {
-			EuclideanDis,   // 欧几里得距离
-			ManhattanDis,   // 曼哈顿距离
-			ChebyshevDis,   // 切比雪夫距离
-			EuclideanSqrDis // 欧式平方距离
-		};
 
 		QAPCluster(const Instance &ins, int dimension) : _ins(ins), _dimension(dimension) {
-			build_graph(LevelConnection::Direct);
+			build_graph(Config::LevelGraphConnection::Direct);
 		}
 
 		/// 计算QAP的flow matrix
 		/// [deprecated] gurobi_cluster(flow_matrix, _dimension * _dimension, bin_area);
-		vector<vector<int>> cal_flow_matrix(LevelMetis method) {
+		vector<vector<int>> cal_flow_matrix(Config::LevelFlow method) {
 			vector<vector<int>> flow_matrix;
 			switch (method) {
-			case LevelMetis::Kway:
+			case Config::LevelFlow::Kway:
 				metis_cluster(flow_matrix, _dimension * _dimension, METIS_PartGraphKway);
 				break;
-			case LevelMetis::Recursive:
+			case Config::LevelFlow::Recursive:
 				metis_cluster(flow_matrix, _dimension * _dimension, METIS_PartGraphRecursive);
 				break;
 			default:
@@ -57,7 +41,7 @@ namespace qapc {
 		}
 
 		/// 计算QAP的distance matrix
-		vector<vector<int>> cal_distance_matrix(LevelDistance method) {
+		vector<vector<int>> cal_distance_matrix(Config::LevelDistance method) {
 			int node_num = _dimension * _dimension;
 			_distance_nodes.resize(node_num);
 			for (int x = 0; x < _dimension; ++x) {
@@ -89,7 +73,7 @@ namespace qapc {
 			vector<vector<bool>> group_neighbors(group_num, vector<bool>(group_num, false));
 			for (int gi = 0; gi < group_num; ++gi) {
 				for (int gj = gi + 1; gj < group_num; ++gj) {
-					if (1 == cal_distance(LevelDistance::ChebyshevDis, // 切比雪夫距离为1定义为邻居
+					if (1 == cal_distance(Config::LevelDistance::ChebyshevDis, // 切比雪夫距离为1定义为邻居
 						_distance_nodes.at(gi).first, _distance_nodes.at(gi).second,
 						_distance_nodes.at(gj).first, _distance_nodes.at(gj).second)) {
 						group_neighbors[gi][gj] = true;
@@ -115,19 +99,19 @@ namespace qapc {
 			return group_boundaries;
 		}
 
-		static int cal_distance(LevelDistance method, int x1, int y1, int x2, int y2) {
+		static int cal_distance(Config::LevelDistance method, int x1, int y1, int x2, int y2) {
 			int distance = 0;
 			switch (method) {
-			case LevelDistance::EuclideanDis:
+			case Config::LevelDistance::EuclideanDis:
 				distance = round(sqrt(pow(x1 - x2, 2) + pow(y1 - y2, 2)));
 				break;
-			case LevelDistance::ManhattanDis:
+			case Config::LevelDistance::ManhattanDis:
 				distance = abs(x1 - x2) + abs(y1 - y2);
 				break;
-			case LevelDistance::ChebyshevDis:
+			case Config::LevelDistance::ChebyshevDis:
 				distance = max(abs(x1 - x2), abs(y1 - y2));
 				break;
-			case LevelDistance::EuclideanSqrDis:
+			case Config::LevelDistance::EuclideanSqrDis:
 				distance = pow(x1 - x2, 2) + pow(y1 - y2, 2);
 				break;
 			default:
@@ -141,7 +125,7 @@ namespace qapc {
 		/// 结合net_list还原出图
 		/// [todo] 需要将terminal也加入图中
 		/// [todo] 考虑非直连的边，需要结合最短路径算法求跳数，但metis不支持浮点型权重
-		void build_graph(LevelConnection method) {
+		void build_graph(Config::LevelGraphConnection method) {
 			_graph.resize(_ins.get_block_num(), vector<int>(_ins.get_block_num(), 0));
 			for (auto &net : _ins.get_net_list()) {
 				for (int i = 0; i < net.block_list.size(); ++i) {
@@ -154,7 +138,7 @@ namespace qapc {
 				}
 			}
 
-			if (method == LevelConnection::Indirect) {}
+			if (method == Config::LevelGraphConnection::Indirect) {}
 		}
 
 		/// 邻接矩阵转压缩图（CSR）
