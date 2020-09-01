@@ -18,8 +18,8 @@ class AdaptiveSelection {
 public:
 
 	AdaptiveSelection(const Environment &env, const Config &cfg) :
-		_env(env), _cfg(cfg), _ins(_env), _cluster(_ins, _cfg.dimension),
-		_gen(_cfg.random_seed), _best_fill_ratio(_cfg.init_fill_ratio) {}
+		_env(env), _cfg(cfg), _ins(_env), _cluster(_ins, _cfg.dimension), _gen(_cfg.random_seed),
+		_objective(numeric_limits<double>::max()), _best_fill_ratio(_cfg.init_fill_ratio) {}
 
 	/// 候选宽度定义
 	struct CandidateWidthObj {
@@ -56,21 +56,18 @@ public:
 		// 分支初始化iter=1
 		vector<CandidateWidthObj> cw_objs;
 		for (int bin_width : candidate_widths) {
-			int bin_height = ceil(_ins.get_total_area() / (bin_width * _best_fill_ratio)); // 向上取整
-			vector<Boundary> group_boundaries = _cluster.cal_group_boundaries(bin_width, bin_height);
+			int lb_height = ceil(_ins.get_total_area() / (bin_width * _best_fill_ratio)); // bin下界高度，仅用于确定分组
+			vector<Boundary> group_boundaries = _cluster.cal_group_boundaries(bin_width, lb_height);
 			cw_objs.push_back({ bin_width, 1, unique_ptr<FloorplanBinPack>(
-				new FloorplanBinPack(src, group_neighbors, group_boundaries, bin_width, _gen)) });
-			cw_objs.back().fbp_solver->random_local_search(1, _cfg.level_fbp_gs);
-			if (cw_objs.back().fbp_solver->get_fill_ratio() > _best_fill_ratio) {
-				_best_fill_ratio = cw_objs.back().fbp_solver->get_fill_ratio();
-				_best_dst = cw_objs.back().fbp_solver->get_dst();
-				cout << _best_fill_ratio << endl;
-			}
+				new FloorplanBinPack(_ins, src, group_neighbors, group_boundaries, bin_width, _gen)) });
+			cw_objs.back().fbp_solver->random_local_search(1, _cfg.alpha, _cfg.beta, _cfg.level_fbp_gs, _cfg.level_fbp_wl, _cfg.level_fbp_norm);
+			check_cwobj(cw_objs.back());
 		}
+		// 降序排列，越后面的选中概率越大
 		sort(cw_objs.begin(), cw_objs.end(), [](auto &lhs, auto &rhs) {
-			return lhs.fbp_solver->get_fill_ratio() < rhs.fbp_solver->get_fill_ratio(); });
+			return lhs.fbp_solver->get_objective() > rhs.fbp_solver->get_objective(); });
 
-		// 离散概率分布
+		// 初始化离散概率分布
 		vector<int> probs; probs.reserve(cw_objs.size());
 		for (int i = 1; i <= cw_objs.size(); ++i) { probs.push_back(2 * i); }
 		discrete_distribution<> discrete_dist(probs.begin(), probs.end());
@@ -78,27 +75,24 @@ public:
 		// 迭代优化
 		while (true) { // [todo] time limit is not exceeded
 			CandidateWidthObj &picked_width = cw_objs[discrete_dist(_gen)];
-			int new_bin_height = ceil(_ins.get_total_area() / (picked_width.value * _best_fill_ratio)); // 向上取整
-			vector<Boundary> new_group_boundaries = _cluster.cal_group_boundaries(picked_width.value, new_bin_height);
+			int new_lb_height = ceil(_ins.get_total_area() / (picked_width.value * _best_fill_ratio));
+			vector<Boundary> new_group_boundaries = _cluster.cal_group_boundaries(picked_width.value, new_lb_height);
 			picked_width.iter = min(2 * picked_width.iter, _cfg.ub_iter);
 			picked_width.fbp_solver->update_group_boundaries(new_group_boundaries);
-			picked_width.fbp_solver->random_local_search(picked_width.iter, _cfg.level_fbp_gs);
-			if (picked_width.fbp_solver->get_fill_ratio() > _best_fill_ratio) {
-				_best_fill_ratio = picked_width.fbp_solver->get_fill_ratio();
-				_best_dst = picked_width.fbp_solver->get_dst();
-				cout << _best_fill_ratio << endl;
-			}
+			picked_width.fbp_solver->random_local_search(picked_width.iter, _cfg.alpha, _cfg.beta, _cfg.level_fbp_gs, _cfg.level_fbp_wl, _cfg.level_fbp_norm);
+			check_cwobj(picked_width);
 			sort(cw_objs.begin(), cw_objs.end(), [](auto &lhs, auto &rhs) {
-				return lhs.fbp_solver->get_fill_ratio() < rhs.fbp_solver->get_fill_ratio(); });
+				return lhs.fbp_solver->get_objective() > rhs.fbp_solver->get_objective(); });
 		}
 	}
 
 private:
 	/// 基于排列组合生成候选宽度组合，考虑所有组合及旋转有`2c_n1 + 2²c_n2 + 2³c_n3 + ...`中情况
 	/// 不需要从k=1开始计算组合数，通过[miniterms, maxiterms]参数控制；论文设置maxiterms=3,4,6
-	vector<int> cal_candidate_widths_on_combrotate(const vector<Rect> &src, double alpha = 1.05, int miniterms = 3, int maxiterms = 6) {
+	vector<int> cal_candidate_widths_on_combrotate(const vector<Rect> &src, int miniterms = 3, int maxiterms = 6, double alpha = 1.05) {
 		int min_cw = max_element(src.begin(), src.end(), [](auto &lhs, auto &rhs) { return lhs.height < rhs.height; })->height;
-		int max_cw = floor(sqrt(_ins.get_total_area()) * alpha);
+		//int max_cw = floor(sqrt(_ins.get_total_area()) * alpha);
+		int max_cw = _ins.get_fixed_width();
 		unordered_set<int> candidate_widths;
 		vector<int> rects(src.size());
 		iota(rects.begin(), rects.end(), 0);
@@ -113,10 +107,14 @@ private:
 						int rcw = 0, nrcw = 0;
 						for (int r : rotated_rects) { rcw += src.at(r).height; }
 						for (int nr : nrotated_rects) { rcw += src.at(nr).width; }
-						if (rcw >= min_cw && rcw <= max_cw) { candidate_widths.insert(rcw); }
+						if (rcw >= min_cw && rcw <= max_cw && rcw * _ins.get_fixed_height() > _ins.get_total_area()) {
+							candidate_widths.insert(rcw);
+						}
 						for (int nr : rotated_rects) { nrcw += src.at(nr).width; }
 						for (int r : nrotated_rects) { nrcw += src.at(r).height; }
-						if (nrcw >= min_cw && nrcw <= max_cw) { candidate_widths.insert(nrcw); }
+						if (nrcw >= min_cw && nrcw <= max_cw && nrcw * _ins.get_fixed_height() > _ins.get_total_area()) {
+							candidate_widths.insert(nrcw);
+						}
 					}
 				}
 			}
@@ -126,9 +124,10 @@ private:
 
 	/// 基于排列组合生成候选宽度组合，仅考虑短边的组合
 	/// 不需要从k=1开始计算组合数，通过[miniterms, maxiterms]参数控制；论文设置maxiterms=3,4,6
-	vector<int> cal_candidate_widths_on_combshort(const vector<Rect> &src, double alpha = 1.05, int miniterms = 3, int maxiterms = 6) {
+	vector<int> cal_candidate_widths_on_combshort(const vector<Rect> &src, int miniterms = 3, int maxiterms = 6, double alpha = 1.05) {
 		int min_cw = max_element(src.begin(), src.end(), [](auto &lhs, auto &rhs) { return lhs.height < rhs.height; })->height;
-		int max_cw = floor(sqrt(_ins.get_total_area()) * alpha);
+		//int max_cw = floor(sqrt(_ins.get_total_area()) * alpha);
+		int max_cw = _ins.get_fixed_width();
 		unordered_set<int> candidate_widths;
 		vector<int> rects(src.size());
 		iota(rects.begin(), rects.end(), 0);
@@ -138,23 +137,42 @@ private:
 			while (kth_comb_rects.next_combination(comb_rects, ncomb_rects)) {
 				int cw = 0, ncw = 0;
 				for (int r : comb_rects) { cw += src.at(r).width; }
-				if (cw >= min_cw && cw <= max_cw) { candidate_widths.insert(cw); }
+				if (cw >= min_cw && cw <= max_cw && cw * _ins.get_fixed_height() > _ins.get_total_area()) { candidate_widths.insert(cw); }
 				for (int nr : ncomb_rects) { ncw += src.at(nr).width; }
-				if (ncw >= min_cw && ncw <= max_cw) { candidate_widths.insert(ncw); }
+				if (ncw >= min_cw && ncw <= max_cw && _ins.get_fixed_height() > _ins.get_total_area()) { candidate_widths.insert(ncw); }
 			}
 		}
 		return vector<int>(candidate_widths.begin(), candidate_widths.end());
 	}
 
 	/// 在区间[W_min, W_max]内，等距地生成候选宽度
-	/// 论文alpha取值范围：[1.0, 1.05, 1.1, 1.15, 1.2]
-	vector<int> cal_candidate_widths_on_interval(const vector<Rect> &src, double alpha = 1.05, int interval = 1) {
+	/// packing论文不考虑fixed-outline限制，alpha取值范围：[1.0, 1.05, 1.1, 1.15, 1.2]
+	vector<int> cal_candidate_widths_on_interval(const vector<Rect> &src, int interval = 1, double alpha = 1.05) {
 		int min_cw = max_element(src.begin(), src.end(), [](auto &lhs, auto &rhs) { return lhs.height < rhs.height; })->height;
-		int max_cw = floor(sqrt(_ins.get_total_area()) * alpha);
+		//int max_cw = floor(sqrt(_ins.get_total_area()) * alpha);
+		int max_cw = _ins.get_fixed_width();
 		vector<int> candidate_widths;
 		candidate_widths.reserve(max_cw - min_cw + 1);
-		for (int cw = min_cw; cw <= max_cw; cw += interval) { candidate_widths.push_back(cw); }
+		for (int cw = min_cw; cw <= max_cw; cw += interval) {
+			if (cw * _ins.get_fixed_height() > _ins.get_total_area()) { candidate_widths.push_back(cw); }
+		}
 		return candidate_widths;
+	}
+
+	/// 检查cw_obj的RLS结果
+	void check_cwobj(const CandidateWidthObj &cw_obj) {
+		if (cw_obj.fbp_solver->get_area() / cw_obj.value > _ins.get_fixed_height()) { // 当前解无效
+			cw_obj.fbp_solver->reset_objective();
+		}
+		if (cw_obj.fbp_solver->get_objective() < _objective) {
+			_objective = cw_obj.fbp_solver->get_objective();
+			_best_fill_ratio = cw_obj.fbp_solver->get_fill_ratio();
+			_best_dst = cw_obj.fbp_solver->get_dst();
+			cout << "objective: " << _objective << endl;
+			cout << "fill ratio: " << _best_fill_ratio << endl;
+			cout << "area: " << cw_obj.fbp_solver->get_area() << endl;
+			cout << "wirelength: " << cw_obj.fbp_solver->get_wirelength() << endl;
+		}
 	}
 
 private:
@@ -165,6 +183,7 @@ private:
 	QAPCluster _cluster;
 	default_random_engine _gen;
 
-	float _best_fill_ratio;
+	double _objective;
+	double _best_fill_ratio; // _objective对应的填充率，不一定是最优填充率
 	vector<Rect> _best_dst;
 };

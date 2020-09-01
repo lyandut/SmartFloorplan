@@ -21,6 +21,12 @@
     <Filter Include="Algorithm\top">
       <UniqueIdentifier>{a22488d3-c559-4897-bfe7-06fb4574f5cc}</UniqueIdentifier>
     </Filter>
+    <Filter Include="资源文件\MCNC">
+      <UniqueIdentifier>{45a22f52-3c4d-4278-a240-be0d01462155}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="资源文件\GSRC">
+      <UniqueIdentifier>{7c769cf0-d568-43e5-ba55-3839136aa9d9}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp" />
@@ -56,22 +62,103 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\Deploy\Instance\MCNCbench\HARD\ami33.blocks">
-      <Filter>资源文件</Filter>
+      <Filter>资源文件\MCNC</Filter>
     </None>
     <None Include="..\Deploy\Instance\MCNCbench\HARD\ami33.nets">
-      <Filter>资源文件</Filter>
+      <Filter>资源文件\MCNC</Filter>
+    </None>
+    <None Include="..\Deploy\Instance\MCNCbench\HARD\ami49.blocks">
+      <Filter>资源文件\MCNC</Filter>
     </None>
     <None Include="..\Deploy\Instance\MCNCbench\HARD\ami33.pl">
-      <Filter>资源文件</Filter>
+      <Filter>资源文件\MCNC</Filter>
     </None>
-    <None Include="..\Deploy\Instance\GSRCbench\HARD\n10.blocks">
-      <Filter>资源文件</Filter>
+    <None Include="..\Deploy\Instance\MCNCbench\HARD\ami49.nets">
+      <Filter>资源文件\MCNC</Filter>
+    </None>
+    <None Include="..\Deploy\Instance\MCNCbench\HARD\ami49.pl">
+      <Filter>资源文件\MCNC</Filter>
+    </None>
+    <None Include="..\Deploy\Instance\MCNCbench\HARD\apte.blocks">
+      <Filter>资源文件\MCNC</Filter>
+    </None>
+    <None Include="..\Deploy\Instance\MCNCbench\HARD\apte.nets">
+      <Filter>资源文件\MCNC</Filter>
+    </None>
+    <None Include="..\Deploy\Instance\MCNCbench\HARD\apte.pl">
+      <Filter>资源文件\MCNC</Filter>
+    </None>
+    <None Include="..\Deploy\Instance\MCNCbench\HARD\hp.blocks">
+      <Filter>资源文件\MCNC</Filter>
+    </None>
+    <None Include="..\Deploy\Instance\MCNCbench\HARD\hp.nets">
+      <Filter>资源文件\MCNC</Filter>
+    </None>
+    <None Include="..\Deploy\Instance\MCNCbench\HARD\hp.pl">
+      <Filter>资源文件\MCNC</Filter>
+    </None>
+    <None Include="..\Deploy\Instance\MCNCbench\HARD\xerox.blocks">
+      <Filter>资源文件\MCNC</Filter>
+    </None>
+    <None Include="..\Deploy\Instance\MCNCbench\HARD\xerox.nets">
+      <Filter>资源文件\MCNC</Filter>
+    </None>
+    <None Include="..\Deploy\Instance\MCNCbench\HARD\xerox.pl">
+      <Filter>资源文件\MCNC</Filter>
     </None>
     <None Include="..\Deploy\Instance\GSRCbench\HARD\n10.nets">
-      <Filter>资源文件</Filter>
+      <Filter>资源文件\GSRC</Filter>
+    </None>
+    <None Include="..\Deploy\Instance\GSRCbench\HARD\n10.blocks">
+      <Filter>资源文件\GSRC</Filter>
     </None>
     <None Include="..\Deploy\Instance\GSRCbench\HARD\n10.pl">
-      <Filter>资源文件</Filter>
+      <Filter>资源文件\GSRC</Filter>
+    </None>
+    <None Include="..\Deploy\Instance\GSRCbench\HARD\n30.blocks">
+      <Filter>资源文件\GSRC</Filter>
+    </None>
+    <None Include="..\Deploy\Instance\GSRCbench\HARD\n30.nets">
+      <Filter>资源文件\GSRC</Filter>
+    </None>
+    <None Include="..\Deploy\Instance\GSRCbench\HARD\n30.pl">
+      <Filter>资源文件\GSRC</Filter>
+    </None>
+    <None Include="..\Deploy\Instance\GSRCbench\HARD\n50.blocks">
+      <Filter>资源文件\GSRC</Filter>
+    </None>
+    <None Include="..\Deploy\Instance\GSRCbench\HARD\n50.nets">
+      <Filter>资源文件\GSRC</Filter>
+    </None>
+    <None Include="..\Deploy\Instance\GSRCbench\HARD\n50.pl">
+      <Filter>资源文件\GSRC</Filter>
+    </None>
+    <None Include="..\Deploy\Instance\GSRCbench\HARD\n100.blocks">
+      <Filter>资源文件\GSRC</Filter>
+    </None>
+    <None Include="..\Deploy\Instance\GSRCbench\HARD\n100.nets">
+      <Filter>资源文件\GSRC</Filter>
+    </None>
+    <None Include="..\Deploy\Instance\GSRCbench\HARD\n100.pl">
+      <Filter>资源文件\GSRC</Filter>
+    </None>
+    <None Include="..\Deploy\Instance\GSRCbench\HARD\n200.blocks">
+      <Filter>资源文件\GSRC</Filter>
+    </None>
+    <None Include="..\Deploy\Instance\GSRCbench\HARD\n200.nets">
+      <Filter>资源文件\GSRC</Filter>
+    </None>
+    <None Include="..\Deploy\Instance\GSRCbench\HARD\n200.pl">
+      <Filter>资源文件\GSRC</Filter>
+    </None>
+    <None Include="..\Deploy\Instance\GSRCbench\HARD\n300.blocks">
+      <Filter>资源文件\GSRC</Filter>
+    </None>
+    <None Include="..\Deploy\Instance\GSRCbench\HARD\n300.nets">
+      <Filter>资源文件\GSRC</Filter>
+    </None>
+    <None Include="..\Deploy\Instance\GSRCbench\HARD\n300.pl">
+      <Filter>资源文件\GSRC</Filter>
     </None>
   </ItemGroup>
 </Project>

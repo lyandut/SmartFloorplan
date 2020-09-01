@@ -8,6 +8,7 @@
 #include <random>
 #include <numeric>
 
+#include "Instance.hpp"
 #include "SkylineBinPack.hpp"
 
 namespace fbp {
@@ -20,50 +21,57 @@ namespace fbp {
 
 		FloorplanBinPack() = delete;
 
-		FloorplanBinPack(const vector<Rect> &src, const vector<vector<bool>> &group_neighbors,
+		FloorplanBinPack(const Instance &ins, const vector<Rect> &src, const vector<vector<bool>> &group_neighbors,
 			vector<Boundary> &group_boundaries, int bin_width, default_random_engine &gen) :
-			_src(src), _group_neighbors(group_neighbors), _group_boundaries(group_boundaries),
+			_ins(ins), _src(src), _objective(numeric_limits<double>::max()),
+			_group_neighbors(group_neighbors), _group_boundaries(group_boundaries),
 			SkylineBinPack(bin_width, INF, false), // binHeight = INF; 转为完成SP
-			_gen(gen), _min_bin_height(numeric_limits<int>::max()), _uniform_dist(0, _src.size() - 1) {
+			_gen(gen), _uniform_dist(0, _src.size() - 1) {
 			init_sort_rules();
 		}
 
 		const vector<Rect>& get_dst() const { return _dst; }
 
-		float get_fill_ratio() const { return _best_fill_ratio; }
+		int get_area() const { return _best_area; }
+
+		double get_fill_ratio() const { return _best_fill_ratio; }
+
+		double get_wirelength() const { return _best_wirelength; }
+
+		double get_objective() const { return _objective; }
+
+		void reset_objective() { _objective = numeric_limits<double>::max(); }
 
 		/// 高度上界变化导致分组边界变化
 		void update_group_boundaries(const vector<Boundary> &new_boundaries) { _group_boundaries = new_boundaries; }
 
-		/// 基于binWidth进行随机局部搜索，返回最小高度
-		void random_local_search(int iter, Config::LevelGroupSearch method) {
+		/// 基于binWidth进行随机局部搜索
+		void random_local_search(int iter, double alpha, double beta,
+			Config::LevelGroupSearch level_gs, Config::LevelWireLength level_wl, Config::LevelObjNorm level_norm) {
 			// the first time to call RLS on W_k
 			if (iter == 1) {
 				for (auto &rule : _sort_rules) {
 					_rects.assign(rule.sequence.begin(), rule.sequence.end());
 					vector<Rect> target_dst;
-					rule.target_height = insert_bottom_left_score(target_dst, method);
-					if (rule.target_height < _min_bin_height) {
-						_min_bin_height = rule.target_height;
-						_best_fill_ratio = (float)usedSurfaceArea / (binWidth * _min_bin_height);
+					int target_area = insert_bottom_left_score(target_dst, level_gs) * binWidth;
+					_his_area.push_back(target_area);
+					double target_wirelength = cal_wirelength(target_dst, level_wl);
+					_his_wirelength.push_back(target_wirelength);
+					rule.target_objective = cal_objective(target_area, target_wirelength, alpha, beta, level_norm);
+					if (rule.target_objective < _objective) {
+						_objective = rule.target_objective;
+						_best_area = target_area;
+						_best_fill_ratio = 1.0*usedSurfaceArea / _best_area;
+						_best_wirelength = target_wirelength;
 						_dst = target_dst;
 					}
 				}
-				sort(_sort_rules.begin(), _sort_rules.end(), [](auto &lhs, auto &rhs) { return lhs.target_height > rhs.target_height; });
-			}
-
-			// 构造初始解
-			SortRule &picked_rule = _sort_rules[_discrete_dist(_gen)];
-			_rects.assign(picked_rule.sequence.begin(), picked_rule.sequence.end());
-			vector<Rect> target_dst;
-			picked_rule.target_height = min(picked_rule.target_height, insert_bottom_left_score(target_dst, method));
-			if (picked_rule.target_height < _min_bin_height) {
-				_min_bin_height = picked_rule.target_height;
-				_best_fill_ratio = (float)usedSurfaceArea / (binWidth * _min_bin_height);
-				_dst = target_dst;
+				// 降序排列，越后面的目标函数值越小选中概率越大
+				sort(_sort_rules.begin(), _sort_rules.end(), [](auto &lhs, auto &rhs) { return lhs.target_objective > rhs.target_objective; });
 			}
 
 			// 迭代优化
+			SortRule &picked_rule = _sort_rules[_discrete_dist(_gen)];
 			for (int i = 1; i <= iter; ++i) {
 				SortRule new_rule = picked_rule;
 				int a = _uniform_dist(_gen);
@@ -72,23 +80,29 @@ namespace fbp {
 				swap(new_rule.sequence[a], new_rule.sequence[b]);
 				_rects.assign(new_rule.sequence.begin(), new_rule.sequence.end());
 				vector<Rect> target_dst;
-				new_rule.target_height = min(new_rule.target_height, insert_bottom_left_score(target_dst, method));
-				if (new_rule.target_height < picked_rule.target_height) {
+				int target_area = insert_bottom_left_score(target_dst, level_gs) * binWidth;
+				_his_area.push_back(target_area);
+				double target_wirelength = cal_wirelength(target_dst, level_wl);
+				_his_wirelength.push_back(target_wirelength);
+				new_rule.target_objective = min(new_rule.target_objective, cal_objective(target_area, target_wirelength, alpha, beta, level_norm));
+				if (new_rule.target_objective < picked_rule.target_objective) {
 					picked_rule = new_rule;
-				}
-				if (picked_rule.target_height < _min_bin_height) {
-					_min_bin_height = picked_rule.target_height;
-					_best_fill_ratio = (float)usedSurfaceArea / (binWidth * _min_bin_height);
-					_dst = target_dst;
+					if (picked_rule.target_objective < _objective) {
+						_objective = picked_rule.target_objective;
+						_best_area = target_area;
+						_best_fill_ratio = 1.0*usedSurfaceArea / _best_area;
+						_best_wirelength = target_wirelength;
+						_dst = target_dst;
+					}
 				}
 			}
 
 			// 更新排序规则列表
-			sort(_sort_rules.begin(), _sort_rules.end(), [](auto &lhs, auto &rhs) { return lhs.target_height > rhs.target_height; });
+			sort(_sort_rules.begin(), _sort_rules.end(), [](auto &lhs, auto &rhs) { return lhs.target_objective > rhs.target_objective; });
 		}
 
 		int insert_bottom_left_score(vector<Rect> &dst, Config::LevelGroupSearch method) {
-			Init(binWidth, binHeight, usedSurfaceArea); // 每次调用重置usedSurfaceArea和skyLine
+			reset();
 			int min_bin_height = 0;
 			dst.clear();
 			dst.reserve(_rects.size());
@@ -135,12 +149,13 @@ namespace fbp {
 				min_bin_height = max(min_bin_height, best_node.y + best_node.height);
 			}
 
+			assert(usedSurfaceArea == _ins.get_total_area());
 			return min_bin_height;
 		}
 
 		/// [deprecated]
 		int insert_greedy_fit(vector<Rect> &dst, Config::LevelHeuristicSearch method) {
-			Init(binWidth, binHeight, usedSurfaceArea); // 每次调用重置usedSurfaceArea和skyLine
+			reset();
 			int min_bin_height = 0;
 			dst.clear();
 			dst.reserve(_rects.size());
@@ -191,16 +206,20 @@ namespace fbp {
 				min_bin_height = max(min_bin_height, best_node.y + best_node.height);
 			}
 
+			assert(usedSurfaceArea == _ins.get_total_area());
 			return min_bin_height;
 		}
 
 	private:
+		/// 每次迭代重置usedSurfaceArea和skyLine
+		void reset() { Init(binWidth, binHeight, useWasteMap); }
+
 		/// 初始化排序规则列表
 		void init_sort_rules() {
 			vector<int> seq(_src.size());
 			// 0_输入顺序
 			iota(seq.begin(), seq.end(), 0);
-			for (int i = 0; i < 5; ++i) { _sort_rules.push_back({ seq, numeric_limits<int>::max() }); }
+			for (int i = 0; i < 5; ++i) { _sort_rules.push_back({ seq, numeric_limits<double>::max() }); }
 			// 1_面积递减
 			sort(_sort_rules[1].sequence.begin(), _sort_rules[1].sequence.end(), [this](int lhs, int rhs) {
 				return (_src.at(lhs).width * _src.at(lhs).height) > (_src.at(rhs).width * _src.at(rhs).height); });
@@ -216,6 +235,7 @@ namespace fbp {
 			// 默认赋给_rect输入顺序，可用于测试贪心算法
 			_rects.assign(_sort_rules[0].sequence.begin(), _sort_rules[0].sequence.end());
 
+			// 离散概率分布初始化
 			vector<int> probs; probs.reserve(_sort_rules.size());
 			for (int i = 1; i <= _sort_rules.size(); ++i) { probs.push_back(2 * i); }
 			_discrete_dist = discrete_distribution<>(probs.begin(), probs.end());
@@ -416,16 +436,74 @@ namespace fbp {
 			return { skyLine[skyline_index].x, skyLine[skyline_index].y, skyLine[skyline_index].width, hl, hr };
 		}
 
+		/// [todo] 默认引脚在中心，MCNC算例引脚在block边上
+		double cal_wirelength(vector<Rect> &dst, Config::LevelWireLength method) {
+			int total_wirelength = 0;
+			sort(dst.begin(), dst.end(), [](auto &lhs, auto &rhs) { return lhs.id < rhs.id; });
+			for (auto &net : _ins.get_net_list()) {
+				double max_x = 0, min_x = numeric_limits<double>::max();
+				double max_y = 0, min_y = numeric_limits<double>::max();
+				for (int b : net.block_list) {
+					double pin_x = dst.at(b).x + dst.at(b).width / 2.0;
+					double pin_y = dst.at(b).y + dst.at(b).height / 2.0;
+					max_x = max(max_x, pin_x);
+					min_x = min(min_x, pin_x);
+					max_y = max(max_y, pin_y);
+					min_y = min(min_y, pin_y);
+				}
+				if (method == Config::LevelWireLength::BlockAndTerminal) {
+					for (int t : net.terminal_list) {
+						double pin_x = _ins.get_terminals().at(t).x_coordinate;
+						double pin_y = _ins.get_terminals().at(t).y_coordinate;
+						max_x = max(max_x, pin_x);
+						min_x = min(min_x, pin_x);
+						max_y = max(max_y, pin_y);
+						min_y = min(min_y, pin_y);
+					}
+				}
+				double hpwl = max_x - min_x + max_y - min_y;
+				total_wirelength += hpwl;
+			}
+			return total_wirelength;
+		}
+
+		/// 尝试不同的归一化方法：1.最小面积/线长；2.平均面积/线长
+		double cal_objective(int target_area, double target_wirelength, double alpha, double beta, Config::LevelObjNorm method) {
+			double norm_area, norm_wirelength;
+			switch (method) {
+			case Config::Average:
+				norm_area = accumulate(_his_area.begin(), _his_area.end(), 0.0) / _his_area.size();
+				norm_wirelength = accumulate(_his_wirelength.begin(), _his_wirelength.end(), 0.0) / _his_wirelength.size();
+				break;
+			case Config::Minimum:
+				norm_area = *min_element(_his_area.begin(), _his_area.end());
+				norm_wirelength = *min_element(_his_wirelength.begin(), _his_wirelength.end());
+				break;
+			default:
+				assert(false);
+				break;
+			}
+			return alpha * target_area / norm_area + beta * target_wirelength / norm_wirelength;
+		}
+
 	private:
+		const Instance &_ins;
 		const vector<Rect> &_src;
 		vector<Rect> _dst;
-		int _min_bin_height;
-		float _best_fill_ratio;
+
+		/// 优化目标相关
+		int _best_area;
+		double _best_fill_ratio;
+		double _best_wirelength;
+		double _objective;
+		/// 记录历史解，用于归一化 [todo]控制size，防止内存溢出？
+		vector<int> _his_area;
+		vector<double> _his_wirelength;
 
 		/// 排序规则定义
 		struct SortRule {
 			vector<int> sequence;
-			int target_height;
+			double target_objective;
 		};
 		vector<SortRule> _sort_rules; // 排序规则列表，用于随机局部搜索
 		list<int> _rects;			  // SortRule的sequence，相当于指针，使用list快速删除，放置完毕为空

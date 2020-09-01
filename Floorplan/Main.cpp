@@ -3,7 +3,7 @@
 void test_qap() { qap::test_qap(); }
 
 void test_floorplan_bin_pack(const Instance &ins, const QAPCluster &cluster) {
-	float dead_ratio = 0.5f;
+	double dead_ratio = 0.5;
 	int bin_width = ceil(sqrt(ins.get_total_area() * (1 + dead_ratio)));
 	int bin_height = bin_width;
 
@@ -15,7 +15,7 @@ void test_floorplan_bin_pack(const Instance &ins, const QAPCluster &cluster) {
 
 	printf("Initializing bin to size %dx%d.\n", bin_width, bin_height);
 	default_random_engine gen(random_device{}());
-	fbp::FloorplanBinPack fbp_solver(src, group_neighbors, group_boundaries, bin_width, gen);
+	fbp::FloorplanBinPack fbp_solver(ins, src, group_neighbors, group_boundaries, bin_width, gen);
 
 	printf("Perform the packing...\n");
 	vector<fbp::Rect> dst;
@@ -33,14 +33,20 @@ int main(int argc, char **argv) {
 	//Environment env("MCNC", "H", "ami49");
 
 	Config cfg;
-	cfg.dimension = 5;
 	cfg.random_seed = random_device{}();
-	cfg.init_fill_ratio = 0.5f;
+	cfg.init_fill_ratio = 0.5;
+	cfg.alpha = 0.5;
+	cfg.beta = 1 - cfg.alpha;
+	cfg.dimension = 5;
+	cfg.ub_time = 60 * 10;
 	cfg.ub_iter = 9999;
 	cfg.level_asa_cw = Config::LevelCandidateWidth::Interval;
+	cfg.level_qapc_gc = Config::LevelGraphConnection::Direct;
 	cfg.level_qapc_flow = Config::LevelFlow::Kway;
 	cfg.level_qapc_dis = Config::LevelDistance::ManhattanDis;
 	cfg.level_fbp_gs = Config::LevelGroupSearch::None;
+	cfg.level_fbp_wl = Config::LevelWireLength::BlockOnly;
+	cfg.level_fbp_norm = Config::LevelObjNorm::Average;
 
 	AdaptiveSelection asa(env, cfg);
 	asa.run();

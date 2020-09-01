@@ -62,7 +62,7 @@ struct Net {
 
 class Instance {
 public:
-	Instance(const Environment &env) : _env(env) { read_instance(); }
+	Instance(const Environment &env) : _env(env), _fixed_width(0), _fixed_height(0) { read_instance(); }
 
 	/// 待打包矩形列表，默认w≤h避免后续计算增加无用判断
 	vector<rbp::Rect> get_rects() const {
@@ -86,6 +86,9 @@ public:
 	int get_block_area(int i) const { return _blocks[i].area; }
 	int get_total_area() const { return _total_area; }
 
+	int get_fixed_width() const { return _fixed_width; }
+	int get_fixed_height() const { return _fixed_height; }
+
 private:
 	void read_instance() {
 		read_blocks();
@@ -106,6 +109,7 @@ private:
 		fscanf(file, "NumTerminals : %d\n", &_terminal_num);
 
 		_blocks.resize(_block_num);
+		_total_area = 0;
 		for (int i = 0; i < _block_num; ++i) {
 			int a, b, c, d, e, f; // ignore parameter
 			char block_name[10];
@@ -189,6 +193,8 @@ private:
 			assert(iter != _blocks.end());
 			iter->x_coordinate = x;
 			iter->y_coordinate = y;
+			_fixed_width = max(_fixed_width, x);
+			_fixed_height = max(_fixed_height, y);
 		}
 
 		for (int i = 0; i < _terminal_num; ++i) {
@@ -200,6 +206,8 @@ private:
 			assert(iter != _terminals.end());
 			iter->x_coordinate = x;
 			iter->y_coordinate = y;
+			_fixed_width = max(_fixed_width, x);
+			_fixed_height = max(_fixed_height, y);
 		}
 
 		fprintf(stdout, "%s: pl file read success.\n", _env.pl_path().c_str());
@@ -209,6 +217,10 @@ private:
 
 private:
 	const Environment &_env;
+
+	// fixed outline info
+	int _fixed_width;
+	int _fixed_height;
 
 	// blocks info
 	vector<Block> _blocks;
