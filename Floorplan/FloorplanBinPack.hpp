@@ -54,9 +54,8 @@ namespace fbp {
 					_rects.assign(rule.sequence.begin(), rule.sequence.end());
 					vector<Rect> target_dst;
 					int target_area = insert_bottom_left_score(target_dst, level_gs) * binWidth;
-					_his_area.push_back(target_area);
 					double target_wirelength = cal_wirelength(target_dst, level_wl);
-					_his_wirelength.push_back(target_wirelength);
+					add_his_sol(target_area, target_wirelength);
 					rule.target_objective = cal_objective(target_area, target_wirelength, alpha, beta, level_norm);
 					if (rule.target_objective < _objective) {
 						_objective = rule.target_objective;
@@ -81,9 +80,8 @@ namespace fbp {
 				_rects.assign(new_rule.sequence.begin(), new_rule.sequence.end());
 				vector<Rect> target_dst;
 				int target_area = insert_bottom_left_score(target_dst, level_gs) * binWidth;
-				_his_area.push_back(target_area);
 				double target_wirelength = cal_wirelength(target_dst, level_wl);
-				_his_wirelength.push_back(target_wirelength);
+				add_his_sol(target_area, target_wirelength);
 				new_rule.target_objective = min(new_rule.target_objective, cal_objective(target_area, target_wirelength, alpha, beta, level_norm));
 				if (new_rule.target_objective < picked_rule.target_objective) {
 					picked_rule = new_rule;
@@ -486,6 +484,17 @@ namespace fbp {
 			return alpha * target_area / norm_area + beta * target_wirelength / norm_wirelength;
 		}
 
+		void add_his_sol(int area, double wirelength) {
+			if (_his_area.size() >= 1000) { // 控制size，防止内存溢出
+				_his_area.pop_front();
+				_his_area.push_back(area);
+			}
+			if (_his_wirelength.size() >= 1000) {
+				_his_wirelength.pop_front();
+				_his_wirelength.push_back(wirelength);
+			}
+		}
+
 	private:
 		const Instance &_ins;
 		const vector<Rect> &_src;
@@ -496,9 +505,9 @@ namespace fbp {
 		double _best_fill_ratio;
 		double _best_wirelength;
 		double _objective;
-		/// 记录历史解，用于归一化 [todo]控制size，防止内存溢出？
-		vector<int> _his_area;
-		vector<double> _his_wirelength;
+		/// 记录历史解，用于归一化
+		deque<int> _his_area;
+		deque<double> _his_wirelength;
 
 		/// 排序规则定义
 		struct SortRule {

@@ -18,7 +18,8 @@ class AdaptiveSelection {
 public:
 
 	AdaptiveSelection(const Environment &env, const Config &cfg) :
-		_env(env), _cfg(cfg), _ins(_env), _cluster(_ins, _cfg.dimension), _gen(_cfg.random_seed),
+		_env(env), _cfg(cfg), _ins(_env), _gen(_cfg.random_seed), _start(clock()),
+		_cluster(_ins, min(_cfg.dimension, static_cast<int>(floor(sqrt(_ins.get_block_num()))))), // block数目不足以分组则求上界
 		_objective(numeric_limits<double>::max()), _best_fill_ratio(_cfg.init_fill_ratio) {}
 
 	/// 候选宽度定义
@@ -35,6 +36,8 @@ public:
 		_cluster.cal_qap_sol(_cluster.cal_flow_matrix(_cfg.level_qapc_flow), _cluster.cal_distance_matrix(_cfg.level_qapc_dis));
 		for (auto &rect : src) { rect.gid = _cluster.qap_sol.at(_cluster.part.at(rect.id)) - 1; }
 		vector<vector<bool>> group_neighbors = _cluster.cal_group_neighbors();
+
+		//_start = clock(); // 不计算qap调用时间
 
 		// Calculate the set of candidate widths W
 		vector<int> candidate_widths;
@@ -73,7 +76,7 @@ public:
 		discrete_distribution<> discrete_dist(probs.begin(), probs.end());
 
 		// 迭代优化
-		while (true) { // [todo] time limit is not exceeded
+		while ((clock() - _start) / static_cast<double>(CLOCKS_PER_SEC) < _cfg.ub_time) {
 			CandidateWidthObj &picked_width = cw_objs[discrete_dist(_gen)];
 			int new_lb_height = ceil(_ins.get_total_area() / (picked_width.value * _best_fill_ratio));
 			vector<Boundary> new_group_boundaries = _cluster.cal_group_boundaries(picked_width.value, new_lb_height);
@@ -84,6 +87,38 @@ public:
 			sort(cw_objs.begin(), cw_objs.end(), [](auto &lhs, auto &rhs) {
 				return lhs.fbp_solver->get_objective() > rhs.fbp_solver->get_objective(); });
 		}
+	}
+
+	void record_fp(string fp_path) const {
+		ofstream fp_file(fp_path);
+		for (auto &rect : _best_dst) {
+			fp_file << _ins.get_blocks().at(rect.id).name << " "
+				<< rect.x << " "
+				<< rect.y << endl;
+		}
+		fp_file << endl;
+		for (auto &terminal : _ins.get_terminals()) {
+			fp_file << terminal.name << " "
+				<< terminal.x_coordinate << " "
+				<< terminal.y_coordinate << endl;
+		}
+		fp_file.close();
+	}
+
+	void record_sol(string sol_path) const {
+		ofstream log_file(sol_path, ios::app);
+		log_file.seekp(0, ios::end);
+		if (log_file.tellp() <= 0) {
+			log_file << "Instance,"
+				"AreaWeight(Alpha),Area,FillRatio,WirelengthWeight(Beta),WireLength,"
+				"Objective,Duration,RandomSeed,Dimension,"
+				"LevelCandidateWidth,LevelGraphConnection,LevelFlow,LevelDistance,LevelGroupSearch,LevelWireLength,LevelObjNorm"
+				<< endl;
+		}
+		log_file << _env._ins_name << ","
+			<< _cfg.alpha << "," << _best_area << "," << _best_fill_ratio << "," << _cfg.beta << "," << "," << _best_wirelength
+			<< _objective << "," << _best_duration << "," << _cfg.random_seed << "," << _cluster._dimension << ","
+			<< _cfg << endl;
 	}
 
 private:
@@ -166,12 +201,11 @@ private:
 		}
 		if (cw_obj.fbp_solver->get_objective() < _objective) {
 			_objective = cw_obj.fbp_solver->get_objective();
+			_best_area = cw_obj.fbp_solver->get_area();
 			_best_fill_ratio = cw_obj.fbp_solver->get_fill_ratio();
+			_best_wirelength = cw_obj.fbp_solver->get_wirelength();
 			_best_dst = cw_obj.fbp_solver->get_dst();
-			cout << "objective: " << _objective << endl;
-			cout << "fill ratio: " << _best_fill_ratio << endl;
-			cout << "area: " << cw_obj.fbp_solver->get_area() << endl;
-			cout << "wirelength: " << cw_obj.fbp_solver->get_wirelength() << endl;
+			_best_duration = (clock() - _start) / static_cast<double>(CLOCKS_PER_SEC);
 		}
 	}
 
@@ -182,8 +216,12 @@ private:
 	Instance _ins;
 	QAPCluster _cluster;
 	default_random_engine _gen;
+	clock_t _start;
 
-	double _objective;
+	int _best_area;
 	double _best_fill_ratio; // _objective对应的填充率，不一定是最优填充率
+	double _best_wirelength;
+	double _objective;
 	vector<Rect> _best_dst;
+	double _best_duration;
 };

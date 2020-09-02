@@ -4,13 +4,15 @@
 //
 #pragma once
 
+#include <iostream>
+
 /// 算法参数设置
 struct Config {
 	unsigned int random_seed; // 随机种子，release版本使用`random_device{}();`
 	double init_fill_ratio;   // 初始填充率，建议0.5
 	double alpha;             // 面积权重
 	double beta;			  // 线长权重
-	int dimension;            // QAP分组维度. e.g.dimension=5则划分25个分组
+	int dimension;            // QAP最大分组维度. e.g.dimension=5则划分25个分组，不足25个block则求上界
 	int ub_time;              // ASA超时时间
 	int ub_iter;              // RLS最大迭代次数
 
@@ -61,3 +63,54 @@ struct Config {
 		BottomLeftScore  // 最下最左skyline，考虑靠skyline右侧放置
 	} level_fbp_hs;      // RLS仅支持BottomLeftScore
 };
+
+std::ostream& operator<<(std::ostream &os, const Config &cfg) {
+	switch (cfg.level_asa_cw) {
+	case Config::LevelCandidateWidth::CombRotate: os << "CombRotate,"; break;
+	case Config::LevelCandidateWidth::CombShort: os << "CombShort,"; break;
+	case Config::LevelCandidateWidth::Interval: os << "Interval,"; break;
+	default: break;
+	}
+
+	switch (cfg.level_qapc_gc) {
+	case Config::LevelGraphConnection::Direct: os << "Direct,"; break;
+	case Config::LevelGraphConnection::Indirect: os << "Indirect,"; break;
+	default: break;
+	}
+
+	switch (cfg.level_qapc_flow) {
+	case Config::LevelFlow::Kway: os << "Kway,"; break;
+	case Config::LevelFlow::Recursive:os << "Recursive,"; break;
+	default: break;
+	}
+
+	switch (cfg.level_qapc_dis) {
+	case Config::LevelDistance::EuclideanDis: os << "EuclideanDis,"; break;
+	case Config::LevelDistance::ChebyshevDis: os << "ChebyshevDis,"; break;
+	case Config::LevelDistance::ManhattanDis: os << "ManhattanDis,"; break;
+	case Config::LevelDistance::EuclideanSqrDis: os << "EuclideanSqrDis,"; break;
+	default: break;
+	}
+
+	switch (cfg.level_fbp_gs) {
+	case Config::LevelGroupSearch::None: os << "None,"; break;
+	case Config::LevelGroupSearch::Selfishly: os << "Selfishly,"; break;
+	case Config::LevelGroupSearch::NeighborAll: os << "NeighborAll,"; break;
+	case Config::LevelGroupSearch::NeighborPartial: os << "NeighborPartial,"; break;
+	default: break;
+	}
+
+	switch (cfg.level_fbp_wl) {
+	case Config::LevelWireLength::BlockOnly: os << "BlockOnly,"; break;
+	case Config::LevelWireLength::BlockAndTerminal: os << "BlockAndTerminal,"; break;
+	default: break;
+	}
+
+	switch (cfg.level_fbp_norm) {
+	case Config::LevelObjNorm::Average: os << "Average"; break;
+	case Config::LevelObjNorm::Minimum: os << "Minimum"; break;
+	default: break;
+	}
+
+	return os;
+}

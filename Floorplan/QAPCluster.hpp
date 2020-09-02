@@ -298,10 +298,10 @@ namespace qapc {
 		// `qap_sol[part[rect.id]] = distance_node_id = group_id`
 		vector<int> part;
 		vector<int> qap_sol;
+		const int _dimension;
 
 	private:
 		const Instance &_ins;
-		const int _dimension;
 		vector<vector<int>> _graph;
 		vector<pair<int, int>> _distance_nodes;
 	};

@@ -25,7 +25,7 @@
 #include <vector>
 
 namespace qap {
-#define time_limit 10  // [todo] 临时设置为10s，发布版本改为60
+#define time_limit 60 * 3  // [todo] debug设置为10s，release版本改为60 * n
 #define mem_size 100000
 typedef int*   type_vector;
 typedef long** type_matrix;

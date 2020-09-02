@@ -11,7 +11,7 @@ vector<idx_t> func(vector<idx_t> &xadj, vector<idx_t> &adjncy, vector<idx_t> &ad
 	idx_t nVertices = xadj.size() - 1;   // 节点数
 	idx_t nEdges = adjncy.size() / 2;    // 边数
 	idx_t nWeights = 1;                  // 节点权重维数
-	idx_t nParts = 2;                    // 子图个数
+	idx_t nParts = 2;                    // 子图个数≥2
 	idx_t objval;
 	std::vector<idx_t> part(nVertices, 0);
 
@@ -67,7 +67,6 @@ int main() {
 		}
 	}
 	xadj.push_back(adjncy.size());
-
 	ingraph.close();
 
 	vector<idx_t> part = func(xadj, adjncy, adjwgt);
@@ -80,4 +79,6 @@ int main() {
 		outpartition << i << " " << part[i] << endl;
 	}
 	outpartition.close();
+
+	system("pause");
 }

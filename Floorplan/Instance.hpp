@@ -8,6 +8,8 @@
 #include <string>
 #include <list>
 #include <vector>
+#include <unordered_map>
+#include <deque>
 #include <fstream>
 #include <cassert>
 #include <algorithm>
@@ -26,19 +28,21 @@ public:
 	string blocks_path() const { return instance_dir() + benchmark_dir() + type_dir() + _ins_name + ".blocks"; }
 	string nets_path() const { return instance_dir() + benchmark_dir() + type_dir() + _ins_name + ".nets"; }
 	string pl_path() const { return instance_dir() + benchmark_dir() + type_dir() + _ins_name + ".pl"; }
-	string solution_path() const { return solution_dir() + _ins_name; }
-	string solution_path_with_time() const { return  solution_dir() + _ins_name + "." + utils::Date::to_detail_str(); }
+	string fp_path() const { return solution_dir() + benchmark_dir() + _ins_name + ".fp"; }
+	string fp_path_with_time() const { return solution_dir() + benchmark_dir() + _ins_name + "." + utils::Date::to_long_str() + ".fp"; }
+	string solution_path() const { return solution_dir() + _ins_bench + ".csv"; }
+	string solution_path_with_time() const { return  solution_dir() + _ins_bench + utils::Date::to_short_str() + ".csv"; }
 
 private:
 	static string instance_dir() { return "Instance/"; }
 	static string solution_dir() { return "Solution/"; }
-	string benchmark_dir() const { return _ins_bench == "MCNC" ? "MCNCbench/" : "GSRCbench/"; }
+	string benchmark_dir() const { return _ins_bench == "MCNC" ? "MCNC/" : "GSRC/"; }
 	string type_dir() const { return _ins_type == "H" ? "HARD/" : "SOFT/"; }
 
-private:
-	string _ins_bench;
-	string _ins_type;
-	string _ins_name;
+public:
+	const string _ins_bench;
+	const string _ins_type;
+	const string _ins_name;
 };
 
 struct Block {
@@ -235,4 +239,13 @@ private:
 	vector<Net> _nets;
 	int _net_num;
 	int _pin_num;
+};
+
+
+static vector<string> mcnc_ins{ "ami33", "ami49", "apte", "hp", "xerox" };
+static vector<string> gsrc_ins{ "n10", "n30", "n50", "n100", "n200", "n300" };
+
+static unordered_map<string, string> ins_map{
+	{"MCNC", "ami33"}, {"MCNC", "ami49"},{"MCNC", "apte"},{"MCNC", "hp"},{"MCNC", "xerox"},
+	{"GSRC", "n10"},{"GSRC", "n30"},{"GSRC", "n50"},{"GSRC", "n100"},{"GSRC", "n200"},{"GSRC", "n300"}
 };
