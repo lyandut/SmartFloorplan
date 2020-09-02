@@ -42,7 +42,7 @@ int main(int argc, char **argv) {
 	cfg.level_qapc_flow = Config::LevelFlow::Kway;
 	cfg.level_qapc_dis = Config::LevelDistance::ManhattanDis;
 	cfg.level_fbp_gs = Config::LevelGroupSearch::NeighborAll;
-	cfg.level_fbp_wl = Config::LevelWireLength::BlockAndTerminal;
+	cfg.level_fbp_wl = Config::LevelWireLength::BlockOnly;
 	cfg.level_fbp_norm = Config::LevelObjNorm::Average;
 
 	for (auto &ins : ins_map) {
@@ -55,13 +55,13 @@ int main(int argc, char **argv) {
 		//asa.record_sol(env.solution_path_with_time());
 	}
 
-	//Environment env("GSRC", "H", "n100");
+	//Environment env("MCNC", "H", "ami33");
 	//AdaptiveSelection asa(env, cfg);
 	//asa.run();
 	//asa.record_fp(env.fp_path());
 	//asa.record_fp(env.fp_path_with_time());
 	//asa.record_sol(env.solution_path());
-	//asa.record_sol(env.solution_path_with_time());
+	////asa.record_sol(env.solution_path_with_time());
 
 	system("pause");
 	return 0;

@@ -8,7 +8,6 @@
 #include <string>
 #include <list>
 #include <vector>
-#include <unordered_map>
 #include <deque>
 #include <fstream>
 #include <cassert>
@@ -245,7 +244,7 @@ private:
 static vector<string> mcnc_ins{ "ami33", "ami49", "apte", "hp", "xerox" };
 static vector<string> gsrc_ins{ "n10", "n30", "n50", "n100", "n200", "n300" };
 
-static unordered_map<string, string> ins_map{
+static vector<pair<string, string>> ins_map{
 	{"MCNC", "ami33"}, {"MCNC", "ami49"},{"MCNC", "apte"},{"MCNC", "hp"},{"MCNC", "xerox"},
 	{"GSRC", "n10"},{"GSRC", "n30"},{"GSRC", "n50"},{"GSRC", "n100"},{"GSRC", "n200"},{"GSRC", "n300"}
 };

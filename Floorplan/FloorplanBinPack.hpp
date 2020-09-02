@@ -485,14 +485,11 @@ namespace fbp {
 		}
 
 		void add_his_sol(int area, double wirelength) {
-			if (_his_area.size() >= 1000) { // 控制size，防止内存溢出
-				_his_area.pop_front();
-				_his_area.push_back(area);
-			}
-			if (_his_wirelength.size() >= 1000) {
-				_his_wirelength.pop_front();
-				_his_wirelength.push_back(wirelength);
-			}
+			// 控制size，防止内存溢出
+			if (_his_area.size() >= 1000) { _his_area.pop_front(); }
+			if (_his_wirelength.size() >= 1000) { _his_wirelength.pop_front(); }
+			_his_area.push_back(area);
+			_his_wirelength.push_back(wirelength);
 		}
 
 	private:
@@ -505,7 +502,7 @@ namespace fbp {
 		double _best_fill_ratio;
 		double _best_wirelength;
 		double _objective;
-		/// 记录历史解，用于归一化
+		/// 记录最近的n个解，用于归一化
 		deque<int> _his_area;
 		deque<double> _his_wirelength;
 

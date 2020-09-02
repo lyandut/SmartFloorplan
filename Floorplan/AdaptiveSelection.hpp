@@ -75,7 +75,7 @@ public:
 		for (int i = 1; i <= cw_objs.size(); ++i) { probs.push_back(2 * i); }
 		discrete_distribution<> discrete_dist(probs.begin(), probs.end());
 
-		// 迭代优化
+		// 迭代优化 
 		while ((clock() - _start) / static_cast<double>(CLOCKS_PER_SEC) < _cfg.ub_time) {
 			CandidateWidthObj &picked_width = cw_objs[discrete_dist(_gen)];
 			int new_lb_height = ceil(_ins.get_total_area() / (picked_width.value * _best_fill_ratio));
@@ -110,13 +110,13 @@ public:
 		log_file.seekp(0, ios::end);
 		if (log_file.tellp() <= 0) {
 			log_file << "Instance,"
-				"AreaWeight(Alpha),Area,FillRatio,WirelengthWeight(Beta),WireLength,"
+				"Alpha(AreaWeight),Area,FillRatio,(Beta)WireWeight,WireLength,"
 				"Objective,Duration,RandomSeed,Dimension,"
 				"LevelCandidateWidth,LevelGraphConnection,LevelFlow,LevelDistance,LevelGroupSearch,LevelWireLength,LevelObjNorm"
 				<< endl;
 		}
 		log_file << _env._ins_name << ","
-			<< _cfg.alpha << "," << _best_area << "," << _best_fill_ratio << "," << _cfg.beta << "," << "," << _best_wirelength
+			<< _cfg.alpha << "," << _best_area << "," << _best_fill_ratio << "," << _cfg.beta << "," << _best_wirelength << ","
 			<< _objective << "," << _best_duration << "," << _cfg.random_seed << "," << _cluster._dimension << ","
 			<< _cfg << endl;
 	}
