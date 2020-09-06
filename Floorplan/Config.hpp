@@ -37,21 +37,22 @@ struct Config {
 		ManhattanDis,   // 曼哈顿距离
 		ChebyshevDis,   // 切比雪夫距离
 		EuclideanSqrDis // 欧式平方距离
-	} level_qapc_dis;
+	} level_qapc_dis;   // 默认ManhattanDis
 
 	enum LevelGroupSearch {
-		None,		     // 不分组
+		NoGroup,		 // 不分组
 		Selfishly,       // 仅当前分组
 		NeighborAll,     // 当前分组和全部邻居分组
 		NeighborPartial  // [todo] 当前分组和左/下邻居分组，或可考虑按百分比选取一部分矩形
-	} level_fbp_gs;
+	} level_fbp_gs;      // 默认NeighborAll
 
 	enum LevelWireLength {
 		BlockOnly,       // 仅计算block互连线长，用于测试[Chen.2017]论文结果
 		BlockAndTerminal // 计算block和terminal互连线长
-	} level_fbp_wl;      // 建议BlockAndTerminal
+	} level_fbp_wl;      // 默认BlockAndTerminal
 
 	enum LevelObjNorm {
+		NoNorm,         // 不归一化，仅在纯优化面积时配合`LevelGroupSearch::NoGroup`使用
 		Average,        // 使用平均值归一化
 		Minimum			// 使用最小值归一化
 	} level_fbp_norm;
@@ -93,7 +94,7 @@ std::ostream& operator<<(std::ostream &os, const Config &cfg) {
 	}
 
 	switch (cfg.level_fbp_gs) {
-	case Config::LevelGroupSearch::None: os << "None,"; break;
+	case Config::LevelGroupSearch::NoGroup: os << "NoGroup,"; break;
 	case Config::LevelGroupSearch::Selfishly: os << "Selfishly,"; break;
 	case Config::LevelGroupSearch::NeighborAll: os << "NeighborAll,"; break;
 	case Config::LevelGroupSearch::NeighborPartial: os << "NeighborPartial,"; break;
@@ -107,6 +108,7 @@ std::ostream& operator<<(std::ostream &os, const Config &cfg) {
 	}
 
 	switch (cfg.level_fbp_norm) {
+	case Config::LevelObjNorm::NoNorm: os << "NoNorm"; break;
 	case Config::LevelObjNorm::Average: os << "Average"; break;
 	case Config::LevelObjNorm::Minimum: os << "Minimum"; break;
 	default: break;

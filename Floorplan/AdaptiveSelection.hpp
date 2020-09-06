@@ -7,6 +7,7 @@
 #include <unordered_set>
 
 #include "Instance.hpp"
+#include "Config.hpp"
 #include "QAPCluster.hpp"
 #include "FloorplanBinPack.hpp"
 
@@ -207,6 +208,7 @@ private:
 			_best_dst = cw_obj.fbp_solver->get_dst();
 			_best_duration = (clock() - _start) / static_cast<double>(CLOCKS_PER_SEC);
 		}
+		cw_obj.fbp_solver->visualize_best_sol(_cfg.level_fbp_wl);
 	}
 
 private:

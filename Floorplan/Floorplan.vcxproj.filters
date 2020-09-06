@@ -59,6 +59,9 @@
     <ClInclude Include="Config.hpp">
       <Filter>Data</Filter>
     </ClInclude>
+    <ClInclude Include="Visualize.hpp">
+      <Filter>Utils</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\Deploy\Instance\GSRC\HARD\n10.blocks">

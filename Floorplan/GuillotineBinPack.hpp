@@ -123,7 +123,7 @@ namespace rbp {
 		/// can be represented with a single rectangle. Takes up Theta(|freeRectangles|^2) time.
 		void MergeFreeList() {
 			debug_run(DisjointRectCollection test);
-			debug_run(for (size_t i = 0; i < freeRectangles.size(); ++i) assert(test.Add(freeRectangles[i]) == true););
+			for (size_t i = 0; i < freeRectangles.size(); ++i) debug_assert(test.Add(freeRectangles[i]) == true);
 
 			// Do a Theta(n^2) loop to see if any pair of free rectangles could me merged into one.
 			// Note that we miss any opportunities to merge three rectangles into one. (should call this function again to detect that)
@@ -165,7 +165,7 @@ namespace rbp {
 				}
 
 			debug_run(test.Clear());
-			debug_run(for (size_t i = 0; i < freeRectangles.size(); ++i) assert(test.Add(freeRectangles[i]) == true););
+			for (size_t i = 0; i < freeRectangles.size(); ++i) debug_assert(test.Add(freeRectangles[i]) == true);
 		}
 
 	private:

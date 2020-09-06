@@ -15,7 +15,6 @@
 
 #include "Rect.hpp"
 #include "Utils.hpp"
-#include "Config.hpp"
 
 using namespace std;
 
@@ -86,6 +85,9 @@ public:
 	const vector<Net> & get_net_list() const { return _nets; }
 
 	int get_block_num() const { return _block_num; }
+	int get_terminal_num() const { return _terminal_num; }
+	int get_net_num() const { return _net_num; }
+
 	int get_block_area(int i) const { return _blocks[i].area; }
 	int get_total_area() const { return _total_area; }
 
@@ -238,13 +240,4 @@ private:
 	vector<Net> _nets;
 	int _net_num;
 	int _pin_num;
-};
-
-
-static vector<string> mcnc_ins{ "ami33", "ami49", "apte", "hp", "xerox" };
-static vector<string> gsrc_ins{ "n10", "n30", "n50", "n100", "n200", "n300" };
-
-static vector<pair<string, string>> ins_map{
-	{"MCNC", "ami33"}, {"MCNC", "ami49"},{"MCNC", "apte"},{"MCNC", "hp"},{"MCNC", "xerox"},
-	{"GSRC", "n10"},{"GSRC", "n30"},{"GSRC", "n50"},{"GSRC", "n100"},{"GSRC", "n200"},{"GSRC", "n300"}
 };

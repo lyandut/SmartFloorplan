@@ -10,6 +10,7 @@
 
 #include "Instance.hpp"
 #include "SkylineBinPack.hpp"
+#include "Visualize.hpp"
 
 namespace fbp {
 
@@ -57,13 +58,7 @@ namespace fbp {
 					double target_wirelength = cal_wirelength(target_dst, level_wl);
 					add_his_sol(target_area, target_wirelength);
 					rule.target_objective = cal_objective(target_area, target_wirelength, alpha, beta, level_norm);
-					if (rule.target_objective < _objective) {
-						_objective = rule.target_objective;
-						_best_area = target_area;
-						_best_fill_ratio = 1.0*usedSurfaceArea / _best_area;
-						_best_wirelength = target_wirelength;
-						_dst = target_dst;
-					}
+					check_rule_sol(rule, target_area, target_wirelength, target_dst);
 				}
 				// 降序排列，越后面的目标函数值越小选中概率越大
 				sort(_sort_rules.begin(), _sort_rules.end(), [](auto &lhs, auto &rhs) { return lhs.target_objective > rhs.target_objective; });
@@ -85,13 +80,7 @@ namespace fbp {
 				new_rule.target_objective = min(new_rule.target_objective, cal_objective(target_area, target_wirelength, alpha, beta, level_norm));
 				if (new_rule.target_objective < picked_rule.target_objective) {
 					picked_rule = new_rule;
-					if (picked_rule.target_objective < _objective) {
-						_objective = picked_rule.target_objective;
-						_best_area = target_area;
-						_best_fill_ratio = 1.0*usedSurfaceArea / _best_area;
-						_best_wirelength = target_wirelength;
-						_dst = target_dst;
-					}
+					check_rule_sol(picked_rule, target_area, target_wirelength, target_dst);
 				}
 			}
 
@@ -148,6 +137,7 @@ namespace fbp {
 			}
 
 			assert(usedSurfaceArea == _ins.get_total_area());
+			debug_run(utils_visualize::visualize_dst(dst)); // debug可视化packing过程
 			return min_bin_height;
 		}
 
@@ -205,12 +195,26 @@ namespace fbp {
 			}
 
 			assert(usedSurfaceArea == _ins.get_total_area());
+			debug_run(utils_visualize::visualize_dst(dst));
 			return min_bin_height;
+		}
+
+		/// 最优解可视化（debug_run）
+		void visualize_best_sol(Config::LevelWireLength method) {
+			debug_run(_terminal_points = utils_visualize::visualize_terminal(_ins));
+			debug_run(_dst_boxes = utils_visualize::visualize_dst(_dst));
+			debug_run(_wire_boxes = utils_visualize::visualize_wire(_ins, _dst, method));
 		}
 
 	private:
 		/// 每次迭代重置usedSurfaceArea和skyLine
 		void reset() { Init(binWidth, binHeight, useWasteMap); }
+
+		/// 排序规则定义
+		struct SortRule {
+			vector<int> sequence;
+			double target_objective;
+		};
 
 		/// 初始化排序规则列表
 		void init_sort_rules() {
@@ -272,7 +276,7 @@ namespace fbp {
 					}
 				}
 				break;
-			case Config::LevelGroupSearch::None:
+			case Config::LevelGroupSearch::NoGroup: // 仅在纯优化面积时使用
 				candidate_rects = _rects;
 				break;
 			default:
@@ -434,10 +438,11 @@ namespace fbp {
 			return { skyLine[skyline_index].x, skyLine[skyline_index].y, skyLine[skyline_index].width, hl, hr };
 		}
 
+		/// 计算线长并可视化
 		/// [todo] 默认引脚在中心，MCNC算例引脚在block边上
 		double cal_wirelength(vector<Rect> &dst, Config::LevelWireLength method) {
 			int total_wirelength = 0;
-			sort(dst.begin(), dst.end(), [](auto &lhs, auto &rhs) { return lhs.id < rhs.id; });
+			sort(dst.begin(), dst.end(), [](auto &lhs, auto &rhs) { return lhs.id < rhs.id; }); // 这里改变了插入顺序
 			for (auto &net : _ins.get_net_list()) {
 				double max_x = 0, min_x = numeric_limits<double>::max();
 				double max_y = 0, min_y = numeric_limits<double>::max();
@@ -451,12 +456,12 @@ namespace fbp {
 				}
 				if (method == Config::LevelWireLength::BlockAndTerminal) {
 					for (int t : net.terminal_list) {
-						double pin_x = _ins.get_terminals().at(t).x_coordinate;
-						double pin_y = _ins.get_terminals().at(t).y_coordinate;
-						max_x = max(max_x, pin_x);
-						min_x = min(min_x, pin_x);
-						max_y = max(max_y, pin_y);
-						min_y = min(min_y, pin_y);
+						double pad_x = _ins.get_terminals().at(t).x_coordinate;
+						double pad_y = _ins.get_terminals().at(t).y_coordinate;
+						max_x = max(max_x, pad_x);
+						min_x = min(min_x, pad_x);
+						max_y = max(max_y, pad_y);
+						min_y = min(min_y, pad_y);
 					}
 				}
 				double hpwl = max_x - min_x + max_y - min_y;
@@ -465,17 +470,29 @@ namespace fbp {
 			return total_wirelength;
 		}
 
+		void add_his_sol(int area, double wirelength) {
+			// 控制size，防止内存溢出
+			if (_his_area.size() >= 9999) { _his_area.pop_front(); }
+			if (_his_wirelength.size() >= 9999) { _his_wirelength.pop_front(); }
+			_his_area.push_back(area);
+			_his_wirelength.push_back(wirelength);
+		}
+
 		/// 尝试不同的归一化方法：1.最小面积/线长；2.平均面积/线长
 		double cal_objective(int target_area, double target_wirelength, double alpha, double beta, Config::LevelObjNorm method) {
 			double norm_area, norm_wirelength;
 			switch (method) {
-			case Config::Average:
+			case Config::LevelObjNorm::Average:
 				norm_area = accumulate(_his_area.begin(), _his_area.end(), 0.0) / _his_area.size();
 				norm_wirelength = accumulate(_his_wirelength.begin(), _his_wirelength.end(), 0.0) / _his_wirelength.size();
 				break;
-			case Config::Minimum:
+			case Config::LevelObjNorm::Minimum:
 				norm_area = *min_element(_his_area.begin(), _his_area.end());
 				norm_wirelength = *min_element(_his_wirelength.begin(), _his_wirelength.end());
+				break;
+			case Config::LevelObjNorm::NoNorm: // 仅在纯优化面积时使用
+				norm_area = 1;
+				norm_wirelength = 1;
 				break;
 			default:
 				assert(false);
@@ -484,12 +501,15 @@ namespace fbp {
 			return alpha * target_area / norm_area + beta * target_wirelength / norm_wirelength;
 		}
 
-		void add_his_sol(int area, double wirelength) {
-			// 控制size，防止内存溢出
-			if (_his_area.size() >= 1000) { _his_area.pop_front(); }
-			if (_his_wirelength.size() >= 1000) { _his_wirelength.pop_front(); }
-			_his_area.push_back(area);
-			_his_wirelength.push_back(wirelength);
+		/// 检查并更新最优解
+		void check_rule_sol(const SortRule &rule, int target_area, double target_wirelength, const vector<Rect> &target_dst) {
+			if (rule.target_objective < _objective) {
+				_objective = rule.target_objective;
+				_best_area = target_area;
+				_best_fill_ratio = 1.0*usedSurfaceArea / _best_area;
+				_best_wirelength = target_wirelength;
+				_dst = target_dst;
+			}
 		}
 
 	private:
@@ -506,11 +526,6 @@ namespace fbp {
 		deque<int> _his_area;
 		deque<double> _his_wirelength;
 
-		/// 排序规则定义
-		struct SortRule {
-			vector<int> sequence;
-			double target_objective;
-		};
 		vector<SortRule> _sort_rules; // 排序规则列表，用于随机局部搜索
 		list<int> _rects;			  // SortRule的sequence，相当于指针，使用list快速删除，放置完毕为空
 		discrete_distribution<> _discrete_dist;   // 离散概率分布，用于挑选规则(即挑选sequence赋给_rects)
@@ -521,5 +536,10 @@ namespace fbp {
 		vector<Boundary> _group_boundaries;           // `_group_boundaries[i]`   分组_i的边界
 
 		default_random_engine &_gen;
+
+		// 布局可视化，仅debug
+		debug_run(vector<utils_visualize::point_t> _terminal_points;);
+		debug_run(vector<utils_visualize::box_t> _dst_boxes;);
+		debug_run(vector<utils_visualize::box_t> _wire_boxes;);
 	};
 }
