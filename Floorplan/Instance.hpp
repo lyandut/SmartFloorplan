@@ -28,6 +28,8 @@ public:
 	string pl_path() const { return instance_dir() + benchmark_dir() + type_dir() + _ins_name + ".pl"; }
 	string fp_path() const { return solution_dir() + benchmark_dir() + _ins_name + ".fp"; }
 	string fp_path_with_time() const { return solution_dir() + benchmark_dir() + _ins_name + "." + utils::Date::to_long_str() + ".fp"; }
+	string svg_path() const { return solution_dir() + benchmark_dir() + _ins_name + ".svg"; }
+	string svg_path_with_time() const { return solution_dir() + benchmark_dir() + _ins_name + "." + utils::Date::to_long_str() + ".svg"; }
 	string solution_path() const { return solution_dir() + _ins_bench + ".csv"; }
 	string solution_path_with_time() const { return  solution_dir() + _ins_bench + utils::Date::to_short_str() + ".csv"; }
 

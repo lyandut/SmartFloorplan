@@ -59,7 +59,7 @@
     <ClInclude Include="Config.hpp">
       <Filter>Data</Filter>
     </ClInclude>
-    <ClInclude Include="Visualize.hpp">
+    <ClInclude Include="Visualizer.hpp">
       <Filter>Utils</Filter>
     </ClInclude>
   </ItemGroup>

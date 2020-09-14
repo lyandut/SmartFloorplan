@@ -188,7 +188,7 @@
       <SubType>
       </SubType>
     </ClInclude>
-    <ClInclude Include="Visualize.hpp">
+    <ClInclude Include="Visualizer.hpp">
       <SubType>
       </SubType>
     </ClInclude>

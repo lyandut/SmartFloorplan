@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <title>2D Packing/Cutting Visualization</title>
+  </head>
+  <body>
+    <svg width='800' height='800' viewBox='0 0 800 800'>
+      <rect x='79' y='192' width='96' height='94' style='fill:#28835B; stroke:black; stroke-width:2'/>
+      <text x='127' y='239' text-anchor='middle' alignment-baseline='middle' style='fill:#FFFFF0'></text>
+
+      <rect x='42' y='436' width='26' height='78' style='fill:#50F1F7; stroke:black; stroke-width:2'/>
+      <text x='55' y='475' text-anchor='middle' alignment-baseline='middle' style='fill:#FF0F0F'></text>
+
+      <rect x='0' y='195' width='26' height='76' style='fill:#2776B1; stroke:black; stroke-width:2'/>
+      <text x='13' y='233' text-anchor='middle' alignment-baseline='middle' style='fill:#FFFF0F'></text>
+
+      <rect x='291' y='488' width='96' height='25' style='fill:#ACE16E; stroke:black; stroke-width:2'/>
+      <text x='339' y='500.5' text-anchor='middle' alignment-baseline='middle' style='fill:#000FF0'></text>
+
+      <rect x='332' y='219' width='75' height='92' style='fill:#BBE946; stroke:black; stroke-width:2'/>
+      <text x='369.5' y='265' text-anchor='middle' alignment-baseline='middle' style='fill:#0000FF'></text>
+
+      <rect x='85' y='286' width='64' height='58' style='fill:#A27600; stroke:black; stroke-width:2'/>
+      <text x='117' y='315' text-anchor='middle' alignment-baseline='middle' style='fill:#0FFFFF'></text>
+
+      <rect x='131' y='151' width='36' height='31' style='fill:#9C5692; stroke:black; stroke-width:2'/>
+      <text x='149' y='166.5' text-anchor='middle' alignment-baseline='middle' style='fill:#00FF0F'></text>
+
+      <rect x='360' y='397' width='45' height='91' style='fill:#2A132F; stroke:black; stroke-width:2'/>
+      <text x='382.5' y='442.5' text-anchor='middle' alignment-baseline='middle' style='fill:#F0FFF0'></text>
+
+      <rect x='132' y='344' width='38' height='80' style='fill:#445799; stroke:black; stroke-width:2'/>
+      <text x='151' y='384' text-anchor='middle' alignment-baseline='middle' style='fill:#FFFF00'></text>
+
+      <rect x='89' y='344' width='43' height='64' style='fill:#05E725; stroke:black; stroke-width:2'/>
+      <text x='110.5' y='376' text-anchor='middle' alignment-baseline='middle' style='fill:#FF0FFF'></text>
+
+      <rect x='149' y='286' width='26' height='51' style='fill:#2572AC; stroke:black; stroke-width:2'/>
+      <text x='162' y='311.5' text-anchor='middle' alignment-baseline='middle' style='fill:#FFFF00'></text>
+
+      <rect x='36' y='192' width='43' height='80' style='fill:#5BF493; stroke:black; stroke-width:2'/>
+      <text x='57.5' y='232' text-anchor='middle' alignment-baseline='middle' style='fill:#F00F0F'></text>
+
+      <rect x='0' y='88' width='39' height='58' style='fill:#04DF89; stroke:black; stroke-width:2'/>
+      <text x='19.5' y='117' text-anchor='middle' alignment-baseline='middle' style='fill:#FF00F0'></text>
+
+      <rect x='175' y='190' width='92' height='50' style='fill:#F14EE6; stroke:black; stroke-width:2'/>
+      <text x='221' y='215' text-anchor='middle' alignment-baseline='middle' style='fill:#0FF00F'></text>
+
+      <rect x='271' y='190' width='27' height='28' style='fill:#063832; stroke:black; stroke-width:2'/>
+      <text x='284.5' y='204' text-anchor='middle' alignment-baseline='middle' style='fill:#FFFFFF'></text>
+
+      <rect x='175' y='240' width='96' height='72' style='fill:#30A588; stroke:black; stroke-width:2'/>
+      <text x='223' y='276' text-anchor='middle' alignment-baseline='middle' style='fill:#FF0FFF'></text>
+
+      <rect x='89' y='408' width='42' height='43' style='fill:#470143; stroke:black; stroke-width:2'/>
+      <text x='110' y='429.5' text-anchor='middle' alignment-baseline='middle' style='fill:#FFFFFF'></text>
+
+      <rect x='271' y='219' width='61' height='94' style='fill:#837780; stroke:black; stroke-width:2'/>
+      <text x='301.5' y='266' text-anchor='middle' alignment-baseline='middle' style='fill:#FFFFFF'></text>
+
+      <rect x='213' y='88' width='70' height='72' style='fill:#71D5E1; stroke:black; stroke-width:2'/>
+      <text x='248' y='124' text-anchor='middle' alignment-baseline='middle' style='fill:#FF0F0F'></text>
+
+      <rect x='372' y='132' width='30' height='86' style='fill:#384A8B; stroke:black; stroke-width:2'/>
+      <text x='387' y='175' text-anchor='middle' alignment-baseline='middle' style='fill:#FFF0F0'></text>
+
+      <rect x='199' y='388' width='87' height='49' style='fill:#BDE3EE; stroke:black; stroke-width:2'/>
+      <text x='242.5' y='412.5' text-anchor='middle' alignment-baseline='middle' style='fill:#000F00'></text>
+
+      <rect x='313' y='0' width='94' height='76' style='fill:#0EE887; stroke:black; stroke-width:2'/>
+      <text x='360' y='38' text-anchor='middle' alignment-baseline='middle' style='fill:#F00FFF'></text>
+
+      <rect x='286' y='397' width='74' height='80' style='fill:#FBFDCA; stroke:black; stroke-width:2'/>
+      <text x='323' y='437' text-anchor='middle' alignment-baseline='middle' style='fill:#000000'></text>
+
+      <rect x='176' y='0' width='64' height='80' style='fill:#792146; stroke:black; stroke-width:2'/>
+      <text x='208' y='40' text-anchor='middle' alignment-baseline='middle' style='fill:#F0FFFF'></text>
+
+      <rect x='132' y='424' width='66' height='27' style='fill:#3DA980; stroke:black; stroke-width:2'/>
+      <text x='165' y='437.5' text-anchor='middle' alignment-baseline='middle' style='fill:#F000FF'></text>
+
+      <rect x='0' y='0' width='82' height='86' style='fill:#A1CB7D; stroke:black; stroke-width:2'/>
+      <text x='41' y='43' text-anchor='middle' alignment-baseline='middle' style='fill:#0F00F0'></text>
+
+      <rect x='0' y='146' width='36' height='49' style='fill:#A58591; stroke:black; stroke-width:2'/>
+      <text x='18' y='170.5' text-anchor='middle' alignment-baseline='middle' style='fill:#0FFF0F'></text>
+
+      <rect x='201' y='313' width='93' height='75' style='fill:#596AB3; stroke:black; stroke-width:2'/>
+      <text x='247.5' y='350.5' text-anchor='middle' alignment-baseline='middle' style='fill:#F0F00F'></text>
+
+      <rect x='204' y='488' width='87' height='44' style='fill:#78276C; stroke:black; stroke-width:2'/>
+      <text x='247.5' y='510' text-anchor='middle' alignment-baseline='middle' style='fill:#FFFFF0'></text>
+
+      <rect x='0' y='436' width='42' height='88' style='fill:#79D9A6; stroke:black; stroke-width:2'/>
+      <text x='21' y='480' text-anchor='middle' alignment-baseline='middle' style='fill:#F0000F'></text>
+
+      <rect x='313' y='76' width='93' height='56' style='fill:#15C128; stroke:black; stroke-width:2'/>
+      <text x='359.5' y='104' text-anchor='middle' alignment-baseline='middle' style='fill:#FF0FFF'></text>
+
+      <rect x='89' y='451' width='42' height='81' style='fill:#FC8D8B; stroke:black; stroke-width:2'/>
+      <text x='110' y='491.5' text-anchor='middle' alignment-baseline='middle' style='fill:#00F0F0'></text>
+
+      <rect x='167' y='151' width='44' height='38' style='fill:#07CB3F; stroke:black; stroke-width:2'/>
+      <text x='189' y='170' text-anchor='middle' alignment-baseline='middle' style='fill:#FF00F0'></text>
+
+      <rect x='26' y='360' width='63' height='76' style='fill:#CB56A0; stroke:black; stroke-width:2'/>
+      <text x='57.5' y='398' text-anchor='middle' alignment-baseline='middle' style='fill:#00FF0F'></text>
+
+      <rect x='132' y='451' width='67' height='32' style='fill:#5D080A; stroke:black; stroke-width:2'/>
+      <text x='165.5' y='467' text-anchor='middle' alignment-baseline='middle' style='fill:#F0FFF0'></text>
+
+      <rect x='82' y='0' width='94' height='88' style='fill:#D49118; stroke:black; stroke-width:2'/>
+      <text x='129' y='44' text-anchor='middle' alignment-baseline='middle' style='fill:#0F0FFF'></text>
+
+      <rect x='294' y='313' width='63' height='82' style='fill:#2D0B81; stroke:black; stroke-width:2'/>
+      <text x='325.5' y='354' text-anchor='middle' alignment-baseline='middle' style='fill:#F0F0FF'></text>
+
+      <rect x='131' y='488' width='73' height='43' style='fill:#A61447; stroke:black; stroke-width:2'/>
+      <text x='167.5' y='509.5' text-anchor='middle' alignment-baseline='middle' style='fill:#0FFFFF'></text>
+
+      <rect x='298' y='132' width='74' height='87' style='fill:#DB6CE8; stroke:black; stroke-width:2'/>
+      <text x='335' y='175.5' text-anchor='middle' alignment-baseline='middle' style='fill:#00F00F'></text>
+
+      <rect x='39' y='130' width='92' height='62' style='fill:#337289; stroke:black; stroke-width:2'/>
+      <text x='85' y='161' text-anchor='middle' alignment-baseline='middle' style='fill:#FFFFF0'></text>
+
+      <rect x='175' y='312' width='26' height='36' style='fill:#E8CE39; stroke:black; stroke-width:2'/>
+      <text x='188' y='330' text-anchor='middle' alignment-baseline='middle' style='fill:#0F00F0'></text>
+
+      <rect x='0' y='360' width='26' height='68' style='fill:#AAFCFD; stroke:black; stroke-width:2'/>
+      <text x='13' y='394' text-anchor='middle' alignment-baseline='middle' style='fill:#000000'></text>
+
+      <rect x='240' y='0' width='66' height='85' style='fill:#1FC81F; stroke:black; stroke-width:2'/>
+      <text x='273' y='42.5' text-anchor='middle' alignment-baseline='middle' style='fill:#F00FF0'></text>
+
+      <rect x='39' y='88' width='85' height='42' style='fill:#489324; stroke:black; stroke-width:2'/>
+      <text x='81.5' y='109' text-anchor='middle' alignment-baseline='middle' style='fill:#FF0FFF'></text>
+
+      <rect x='0' y='286' width='85' height='74' style='fill:#1A901B; stroke:black; stroke-width:2'/>
+      <text x='42.5' y='323' text-anchor='middle' alignment-baseline='middle' style='fill:#F00FF0'></text>
+
+      <rect x='283' y='85' width='30' height='28' style='fill:#F6E8A9; stroke:black; stroke-width:2'/>
+      <text x='298' y='99' text-anchor='middle' alignment-baseline='middle' style='fill:#0F0F00'></text>
+
+      <rect x='211' y='160' width='56' height='30' style='fill:#5D1403; stroke:black; stroke-width:2'/>
+      <text x='239' y='175' text-anchor='middle' alignment-baseline='middle' style='fill:#F0FFFF'></text>
+
+      <rect x='199' y='437' width='81' height='51' style='fill:#8D209B; stroke:black; stroke-width:2'/>
+      <text x='239.5' y='462.5' text-anchor='middle' alignment-baseline='middle' style='fill:#F0FF00'></text>
+
+      <rect x='131' y='88' width='82' height='63' style='fill:#E59639; stroke:black; stroke-width:2'/>
+      <text x='172' y='119.5' text-anchor='middle' alignment-baseline='middle' style='fill:#0F0FF0'></text>
+
+      <rect x='357' y='311' width='42' height='86' style='fill:#5BA1D9; stroke:black; stroke-width:2'/>
+      <text x='378' y='354' text-anchor='middle' alignment-baseline='middle' style='fill:#F00F00'></text>
+
+      <circle cx='0' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='15' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='30' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='45' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='60' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='75' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='90' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='105' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='120' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='135' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='150' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='166' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='181' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='196' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='211' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='226' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='241' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='256' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='271' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='286' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='301' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='316' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='332' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='347' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='362' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='377' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='392' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='407' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='422' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='437' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='452' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='467' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='483' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='498' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='513' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='528' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='543' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='558' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='573' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='588' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='603' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='618' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='633' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='649' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='664' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='679' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='694' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='709' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='724' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='739' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='754' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='769' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='784' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='0' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='15' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='30' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='45' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='60' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='75' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='90' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='105' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='120' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='135' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='150' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='166' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='181' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='196' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='211' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='226' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='241' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='256' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='271' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='286' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='301' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='316' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='332' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='347' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='362' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='377' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='392' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='407' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='422' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='437' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='452' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='467' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='483' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='498' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='513' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='528' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='543' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='558' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='573' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='588' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='603' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='618' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='633' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='649' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='664' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='679' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='694' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='709' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='724' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='739' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='754' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='769' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='800' cy='784' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='784' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='769' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='754' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='739' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='724' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='709' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='694' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='679' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='664' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='649' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='633' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='618' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='603' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='588' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='573' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='558' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='543' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='528' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='513' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='498' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='483' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='467' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='452' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='437' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='422' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='407' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='392' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='377' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='362' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='347' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='332' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='316' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='301' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='286' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='271' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='256' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='241' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='226' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='211' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='196' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='181' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='166' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='150' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='135' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='120' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='105' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='90' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='75' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='60' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='45' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='30' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='15' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='800' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='784' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='769' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='754' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='739' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='724' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='709' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='694' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='679' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='664' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='649' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='633' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='618' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='603' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='588' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='573' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='558' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='543' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='528' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='513' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='498' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='483' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='467' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='452' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='437' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='422' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='407' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='392' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='377' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='362' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='347' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='332' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='316' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='301' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='286' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='271' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='256' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='241' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='226' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='211' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='196' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='181' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='166' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='150' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='135' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='120' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='105' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='90' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='75' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='60' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+      <circle cx='0' cy='45' r='2' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>
+    </svg>
+  </body>
+</html>

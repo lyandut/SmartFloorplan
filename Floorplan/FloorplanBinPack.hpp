@@ -10,7 +10,7 @@
 
 #include "Instance.hpp"
 #include "SkylineBinPack.hpp"
-#include "Visualize.hpp"
+#include "Visualizer.hpp"
 
 namespace fbp {
 
@@ -137,7 +137,7 @@ namespace fbp {
 			}
 
 			assert(usedSurfaceArea == _ins.get_total_area());
-			debug_run(utils_visualize::visualize_dst(dst)); // debug可视化packing过程
+			debug_run(utils_visualize_transform::dst_to_boxes(dst)); // 可视化packing过程
 			return min_bin_height;
 		}
 
@@ -195,15 +195,15 @@ namespace fbp {
 			}
 
 			assert(usedSurfaceArea == _ins.get_total_area());
-			debug_run(utils_visualize::visualize_dst(dst));
+			debug_run(utils_visualize_transform::dst_to_boxes(dst)); // 可视化packing过程
 			return min_bin_height;
 		}
 
 		/// 最优解可视化（debug_run）
 		void visualize_best_sol(Config::LevelWireLength method) {
-			debug_run(_terminal_points = utils_visualize::visualize_terminal(_ins));
-			debug_run(_dst_boxes = utils_visualize::visualize_dst(_dst));
-			debug_run(_wire_boxes = utils_visualize::visualize_wire(_ins, _dst, method));
+			debug_run(_terminal_points = utils_visualize_transform::terminal_to_points(_ins));
+			debug_run(_dst_boxes = utils_visualize_transform::dst_to_boxes(_dst));
+			debug_run(_wire_boxes = utils_visualize_transform::wire_to_boxes(_ins, _dst, method));
 		}
 
 	private:

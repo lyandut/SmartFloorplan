@@ -7,8 +7,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Floorplan", "Floorplan\Floo
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "QAPSolver", "QAPSolver\QAPSolver.vcxproj", "{017C77B8-D3E7-436B-87B5-3A58C9BC3392}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MetisTester", "MetisTester\MetisTester.vcxproj", "{EBF79231-3B58-4B26-B1B2-87BFFB6D1001}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -23,10 +21,6 @@ Global
 		{017C77B8-D3E7-436B-87B5-3A58C9BC3392}.Debug|x64.Build.0 = Debug|x64
 		{017C77B8-D3E7-436B-87B5-3A58C9BC3392}.Release|x64.ActiveCfg = Release|x64
 		{017C77B8-D3E7-436B-87B5-3A58C9BC3392}.Release|x64.Build.0 = Release|x64
-		{EBF79231-3B58-4B26-B1B2-87BFFB6D1001}.Debug|x64.ActiveCfg = Debug|x64
-		{EBF79231-3B58-4B26-B1B2-87BFFB6D1001}.Debug|x64.Build.0 = Debug|x64
-		{EBF79231-3B58-4B26-B1B2-87BFFB6D1001}.Release|x64.ActiveCfg = Release|x64
-		{EBF79231-3B58-4B26-B1B2-87BFFB6D1001}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

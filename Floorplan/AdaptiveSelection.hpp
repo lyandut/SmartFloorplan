@@ -103,7 +103,6 @@ public:
 				<< terminal.x_coordinate << " "
 				<< terminal.y_coordinate << endl;
 		}
-		fp_file.close();
 	}
 
 	void record_sol(string sol_path) const {
