@@ -28,10 +28,9 @@ public:
 	string pl_path() const { return instance_dir() + benchmark_dir() + type_dir() + _ins_name + ".pl"; }
 	string fp_path() const { return solution_dir() + benchmark_dir() + _ins_name + ".fp"; }
 	string fp_path_with_time() const { return solution_dir() + benchmark_dir() + _ins_name + "." + utils::Date::to_long_str() + ".fp"; }
-	string svg_path() const { return solution_dir() + benchmark_dir() + _ins_name + ".svg"; }
-	string svg_path_with_time() const { return solution_dir() + benchmark_dir() + _ins_name + "." + utils::Date::to_long_str() + ".svg"; }
+	string html_path() const { return solution_dir() + benchmark_dir() + _ins_name + ".html"; }
+	string html_path_with_time() const { return solution_dir() + benchmark_dir() + _ins_name + "." + utils::Date::to_long_str() + ".html"; }
 	string solution_path() const { return solution_dir() + _ins_bench + ".csv"; }
-	string solution_path_with_time() const { return  solution_dir() + _ins_bench + utils::Date::to_short_str() + ".csv"; }
 
 private:
 	static string instance_dir() { return "Instance/"; }
@@ -69,15 +68,26 @@ public:
 	Instance(const Environment &env) : _env(env), _fixed_width(0), _fixed_height(0) { read_instance(); }
 
 	/// 待打包矩形列表，默认w≤h避免后续计算增加无用判断
-	vector<rbp::Rect> get_rects() const {
+	vector<rbp::Rect> get_rects(bool rotated = true) const {
 		vector<rbp::Rect> rects;
 		rects.reserve(_block_num);
-		for (int i = 0; i < _block_num; ++i) {
-			rects.push_back({ i, 0,
-				_blocks[i].x_coordinate,
-				_blocks[i].y_coordinate,
-				min(_blocks[i].width, _blocks[i].height),
-				max(_blocks[i].width, _blocks[i].height) });
+		if (rotated) {
+			for (int i = 0; i < _block_num; ++i) {
+				rects.push_back({ i, 0,
+					_blocks[i].x_coordinate,
+					_blocks[i].y_coordinate,
+					min(_blocks[i].width, _blocks[i].height),
+					max(_blocks[i].width, _blocks[i].height) });
+			}
+		}
+		else {
+			for (int i = 0; i < _block_num; ++i) {
+				rects.push_back({ i, 0,
+					_blocks[i].x_coordinate,
+					_blocks[i].y_coordinate,
+					_blocks[i].width,
+					_blocks[i].height });
+			}
 		}
 		return rects;
 	}

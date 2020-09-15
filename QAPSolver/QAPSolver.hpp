@@ -28,7 +28,7 @@ namespace qap {
 #ifdef _DEBUG
 #define time_limit 30
 #else
-#define time_limit 60 * 3
+#define time_limit 60 * 10
 #endif // _DEBUG
 
 #define mem_size 100000

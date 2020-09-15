@@ -38,7 +38,7 @@ public:
 		for (auto &rect : src) { rect.gid = _cluster.qap_sol.at(_cluster.part.at(rect.id)) - 1; }
 		vector<vector<bool>> group_neighbors = _cluster.cal_group_neighbors();
 
-		//_start = clock(); // 不计算qap调用时间
+		_start = clock(); // 不计算qap调用时间
 
 		// Calculate the set of candidate widths W
 		vector<int> candidate_widths;
@@ -105,18 +105,36 @@ public:
 		}
 	}
 
+	void draw_html(string html_path) {
+		utils_visualize_drawer::Drawer html_drawer(html_path, _ins.get_fixed_width(), _ins.get_fixed_height());
+		for (auto &r : _best_dst) {
+			html_drawer.rect(r.x, r.y, r.width, r.height);
+		}
+		for (auto &t : _ins.get_terminals()) {
+			html_drawer.circle(t.x_coordinate, t.y_coordinate);
+		}
+		//auto wire_boxes = utils_visualize_transform::wire_to_boxes(_ins, _best_dst, _cfg.level_fbp_wl);
+		//for (auto &w : wire_boxes) {
+		//	html_drawer.wire(w.min_corner().x(), w.min_corner().y(),
+		//		w.max_corner().x() - w.min_corner().x(),
+		//		w.max_corner().y() - w.min_corner().y());
+		//}
+	}
+
 	void record_sol(string sol_path) const {
 		ofstream log_file(sol_path, ios::app);
 		log_file.seekp(0, ios::end);
 		if (log_file.tellp() <= 0) {
 			log_file << "Instance,"
-				"Alpha(AreaWeight),Area,FillRatio,(Beta)WireWeight,WireLength,"
+				"Alpha(AreaWeight),Area,FillRatio,"
+				"Beta(WireWeight),WireLength,"
 				"Objective,Duration,RandomSeed,Dimension,"
 				"LevelCandidateWidth,LevelGraphConnection,LevelFlow,LevelDistance,LevelGroupSearch,LevelWireLength,LevelObjNorm"
 				<< endl;
 		}
 		log_file << _env._ins_name << ","
-			<< _cfg.alpha << "," << _best_area << "," << _best_fill_ratio << "," << _cfg.beta << "," << _best_wirelength << ","
+			<< _cfg.alpha << "," << _best_area << "," << _best_fill_ratio << ","
+			<< _cfg.beta << "," << _best_wirelength << ","
 			<< _objective << "," << _best_duration << "," << _cfg.random_seed << "," << _cluster._dimension << ","
 			<< _cfg << endl;
 	}

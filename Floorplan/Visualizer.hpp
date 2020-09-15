@@ -211,7 +211,7 @@ namespace utils_visualize_drawer {
 				<< "    <title>2D Packing/Cutting Visualization</title>" << endl
 				<< "  </head>" << endl
 				<< "  <body>" << endl // style='text-align:center;'
-				<< "    <svg width='" << W << "' height='" << H << "' viewBox='0 0 " << W << " " << H << "'>" << endl;
+				<< "    <svg width='" << W << "' height='" << H << "' viewBox='-50 -50 " << W + 100 << " " << H + 100 << "'>" << endl;
 		}
 		void end() {
 			ofs << "    </svg>" << endl
@@ -225,9 +225,16 @@ namespace utils_visualize_drawer {
 			ofs << "      <rect x='" << x << "' y='" << y << "' width='" << w << "' height='" << h << "' style='fill:#" << bcolor << "; stroke:black; stroke-width:2'/>" << endl
 				<< "      <text x='" << x + w / 2 << "' y='" << y + h / 2 << "' text-anchor='middle' alignment-baseline='middle' style='fill:#" << fcolor << "'>" << label << "</text>" << endl << endl;
 		}
-		void rect(double x, double y, double w, double h, bool d, const string &label) {
+		void rect(double x, double y, double w, double h, bool d = false, const string &label = "") {
 			rc.next();
 			rect(x, y, w, h, d, label, rc.fcolor, rc.bcolor);
+		}
+
+		void wire(double x, double y, double w, double h, const string &label = "") {
+			rc.next();
+			x *= wx; y *= hx; w *= wx; h *= hx;
+			ofs << "      <rect x='" << x << "' y='" << y << "' width='" << w << "' height='" << h << "' style='fill:none" << "; stroke:#" << rc.bcolor << "; stroke-width:2; stroke-dasharray:12, 4'/>" << endl
+				<< "      <text x='" << x + w / 2 << "' y='" << y + h / 2 << "' text-anchor='middle' alignment-baseline='middle' style='fill:#" << rc.fcolor << "'>" << label << "</text>" << endl << endl;
 		}
 
 		void line(double x1, double y1, double x2, double y2, int layer) {
@@ -237,7 +244,7 @@ namespace utils_visualize_drawer {
 			ofs << "      <line x1='" << x1 << "' y1='" << y1 << "' x2='" << x2 << "' y2='" << y2 << "' stroke-dasharray='12, 4' stroke='" << cutColor[layer] << "' stroke-width='" << cutWidth[layer] << "'/>" << endl << endl;
 		}
 
-		void circle(double x, double y, double r) {
+		void circle(double x, double y, double r = 2) {
 			x *= wx; y *= hx;
 			ofs << "      <circle cx='" << x << "' cy='" << y << "' r='" << r << "' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>" << std::endl;
 		}

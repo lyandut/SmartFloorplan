@@ -253,6 +253,15 @@ namespace fbp {
 					break;
 				}
 			}
+			if (gid == _group_boundaries.size()) { // skyline超出上边界，从后往前只检查x范围即可
+				--gid;
+				for (; gid >= 0; --gid) {
+					if (skyline.x >= _group_boundaries[gid].x && skyline.y >= _group_boundaries[gid].y
+						&& skyline.x < _group_boundaries[gid].x + _group_boundaries[gid].width) {
+						break;
+					}
+				}
+			}
 			list<int> candidate_rects;
 			switch (method) {
 			case Config::LevelGroupSearch::Selfishly:
@@ -441,7 +450,7 @@ namespace fbp {
 		/// 计算线长并可视化
 		/// [todo] 默认引脚在中心，MCNC算例引脚在block边上
 		double cal_wirelength(vector<Rect> &dst, Config::LevelWireLength method) {
-			int total_wirelength = 0;
+			double total_wirelength = 0;
 			sort(dst.begin(), dst.end(), [](auto &lhs, auto &rhs) { return lhs.id < rhs.id; }); // 这里改变了插入顺序
 			for (auto &net : _ins.get_net_list()) {
 				double max_x = 0, min_x = numeric_limits<double>::max();

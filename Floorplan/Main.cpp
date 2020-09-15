@@ -39,7 +39,7 @@ void run_single_ins() {
 	cfg.alpha = 1;
 	cfg.beta = 1 - cfg.alpha;
 	cfg.dimension = 5;
-	cfg.ub_time = 60 * 10;
+	cfg.ub_time = 60 * 1;
 	cfg.ub_iter = 9999;
 	cfg.level_asa_cw = Config::LevelCandidateWidth::Interval;
 	cfg.level_qapc_gc = Config::LevelGraphConnection::Direct;
@@ -48,33 +48,17 @@ void run_single_ins() {
 	cfg.level_fbp_gs = Config::LevelGroupSearch::NeighborAll;
 	cfg.level_fbp_wl = Config::LevelWireLength::BlockAndTerminal;
 	cfg.level_fbp_norm = Config::LevelObjNorm::Average;
+	cfg.level_fbp_hs = Config::LevelHeuristicSearch::BottomLeftScore;
 
-	Environment env("GSRC", "H", "n300");
+	Environment env("GSRC", "H", "n30");
 	AdaptiveSelection asa(env, cfg);
 	asa.run();
 	asa.record_fp(env.fp_path());
 	asa.record_fp(env.fp_path_with_time());
+	asa.draw_html(env.html_path());
+	asa.draw_html(env.html_path_with_time());
 	asa.record_sol(env.solution_path());
-	//asa.record_sol(env.solution_path_with_time());
 }
-
-static Config cfg{
-	random_device{}(),
-	0.5,
-	1,
-	0,
-	5,
-	60 * 10,
-	9999,
-	Config::LevelCandidateWidth::Interval,
-	Config::LevelGraphConnection::Direct,
-	Config::LevelFlow::Kway,
-	Config::LevelDistance::ManhattanDis,
-	Config::LevelGroupSearch::NoGroup,
-	Config::LevelWireLength::BlockOnly,
-	Config::LevelObjNorm::NoNorm,
-	Config::LevelHeuristicSearch::BottomLeftScore
-};
 
 static vector<pair<string, string>> ins_list{
 	{"MCNC", "ami33"}, {"MCNC", "ami49"},{"MCNC", "apte"},{"MCNC", "hp"},
@@ -83,48 +67,97 @@ static vector<pair<string, string>> ins_list{
 };
 
 void run_all_ins() {
+	Config cfg;
+	cfg.random_seed = random_device{}();
+	cfg.init_fill_ratio = 0.5;
+	cfg.alpha = 1;
+	cfg.beta = 1 - cfg.alpha;
+	cfg.dimension = 5;
+	cfg.ub_time = 60 * 30;
+	cfg.ub_iter = 9999;
+	cfg.level_asa_cw = Config::LevelCandidateWidth::Interval;
+	cfg.level_qapc_gc = Config::LevelGraphConnection::Direct;
+	cfg.level_qapc_flow = Config::LevelFlow::Kway;
+	cfg.level_qapc_dis = Config::LevelDistance::ManhattanDis;
+	cfg.level_fbp_gs = Config::LevelGroupSearch::NoGroup;
+	cfg.level_fbp_wl = Config::LevelWireLength::BlockOnly;
+	cfg.level_fbp_norm = Config::LevelObjNorm::NoNorm;
+	cfg.level_fbp_hs = Config::LevelHeuristicSearch::BottomLeftScore;
+
 	for (auto &ins : ins_list) {
 		Environment env(ins.first, "H", ins.second);
 		AdaptiveSelection asa(env, cfg);
 		asa.run();
 		asa.record_fp(env.fp_path());
 		asa.record_fp(env.fp_path_with_time());
+		asa.draw_html(env.html_path());
+		asa.draw_html(env.html_path_with_time());
 		asa.record_sol(env.solution_path());
-		//asa.record_sol(env.solution_path_with_time());
 	}
 }
 
-void draw_init_gsrc() {
-	for (auto &ins : ins_list) {
-		if (ins.first == "GSRC") {
-			Environment env(ins.first, "H", ins.second);
-			Instance gsrc_ins(env);
-			utils_visualize_drawer::Drawer html_drawer("Instance/GSRC/HARD/" + env._ins_name + ".html",
-				gsrc_ins.get_fixed_width(), gsrc_ins.get_fixed_height());
-			auto src = gsrc_ins.get_rects();
-			auto wire_boxes = utils_visualize_transform::wire_to_boxes(gsrc_ins, src, Config::LevelWireLength::BlockAndTerminal);
+void record_gsrc_init_sol() {
+	for (auto &gsrc : ins_list) {
+		if (gsrc.first == "MCNC") { continue; }
+		Environment env(gsrc.first, "H", gsrc.second);
+		Instance ins(env);
 
-			for (auto &b : gsrc_ins.get_blocks()) {
-				html_drawer.rect(b.x_coordinate, b.y_coordinate, b.width, b.height, false, "");
-			}
-			for (auto &t : gsrc_ins.get_terminals()) {
-				html_drawer.circle(t.x_coordinate, t.y_coordinate, 2);
-			}
-			// [todo] 网表画虚线
-			for (auto &w : wire_boxes) {}
+		int min_bin_width = 0, min_bin_height = 0;
+		double hpwl_block = 0, hpwl_terminal = 0;
+
+		// draw init gsrc
+		utils_visualize_drawer::Drawer html_drawer("Instance/GSRC/HARD/" + env._ins_name + ".html",
+			ins.get_fixed_width(), ins.get_fixed_height());
+
+		auto dst = ins.get_rects(false);
+		utils_visualize_transform::dst_to_boxes(dst); // 检查是否重叠
+		for (auto &b : ins.get_blocks()) {
+			html_drawer.rect(b.x_coordinate, b.y_coordinate, b.width, b.height);
+			min_bin_width = max(min_bin_width, b.x_coordinate + b.width);
+			min_bin_height = max(min_bin_height, b.y_coordinate + b.height);
 		}
+		for (auto &t : ins.get_terminals()) {
+			html_drawer.circle(t.x_coordinate, t.y_coordinate);
+		}
+		auto wire_block_boxes = utils_visualize_transform::wire_to_boxes(ins, dst, Config::LevelWireLength::BlockOnly);
+		for (auto &w : wire_block_boxes) {
+			//html_drawer.wire(w.min_corner().x(), w.min_corner().y(),
+			//	w.max_corner().x() - w.min_corner().x(),
+			//	w.max_corner().y() - w.min_corner().y());
+			hpwl_block +=
+				w.max_corner().x() - w.min_corner().x() +
+				w.max_corner().y() - w.min_corner().y();
+		}
+		auto wire_terminal_boxes = utils_visualize_transform::wire_to_boxes(ins, dst, Config::LevelWireLength::BlockAndTerminal);
+		for (auto &w : wire_terminal_boxes) {
+			hpwl_terminal +=
+				w.max_corner().x() - w.min_corner().x() +
+				w.max_corner().y() - w.min_corner().y();
+		}
+
+		// record init gsrc
+		ofstream log_file("Instance/GSRC/HARD/GSRC_init.csv", ios::app);
+		log_file.seekp(0, ios::end);
+		if (log_file.tellp() <= 0) {
+			log_file << "Instance,Area,FillRatio,WireLengthBlock,WireLengthTerminal" << endl;
+		}
+		log_file << env._ins_name << ","
+			<< min_bin_width * min_bin_height << ","
+			<< 1.0*ins.get_total_area() / (min_bin_width * min_bin_height) << ","
+			<< hpwl_block << "," << hpwl_terminal << endl;
 	}
 }
+
 
 int main(int argc, char **argv) {
 
-	//draw_init_gsrc();
+	//record_gsrc_init_sol();
 
 	//test_floorplan_bin_pack();
 
-	run_single_ins();
+	//run_single_ins();
 
-	//run_all_ins();
+	run_all_ins();
 
 	system("pause");
 	return 0;

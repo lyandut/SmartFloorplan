@@ -46,8 +46,8 @@ namespace qapc {
 			_distance_nodes.resize(node_num);
 			for (int x = 0; x < _dimension; ++x) {
 				for (int y = 0; y < _dimension; ++y) {
-					_distance_nodes[x * _dimension + y].first = x;
-					_distance_nodes[x * _dimension + y].second = y;
+					_distance_nodes[x + y * _dimension].first = x;
+					_distance_nodes[x + y * _dimension].second = y;
 				}
 			}
 			vector<vector<int>> distance_matrix(node_num, vector<int>(node_num, 0));
