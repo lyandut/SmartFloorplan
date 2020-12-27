@@ -82,6 +82,9 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
+  <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <VcpkgEnabled>false</VcpkgEnabled>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <PrecompiledHeader>
@@ -167,13 +170,21 @@
     <ClCompile Include="Main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="AdaptiveSelection.hpp" />
+    <ClInclude Include="AdaptiveSelecter.hpp" />
+    <ClInclude Include="BeamSearcher.hpp">
+      <SubType>
+      </SubType>
+    </ClInclude>
     <ClInclude Include="Config.hpp">
       <SubType>
       </SubType>
     </ClInclude>
-    <ClInclude Include="GuillotineBinPack.hpp" />
-    <ClInclude Include="FloorplanBinPack.hpp">
+    <ClInclude Include="Data.hpp" />
+    <ClInclude Include="FloorplanPacker.hpp">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="RandomLocalSearcher.hpp">
       <SubType>
       </SubType>
     </ClInclude>
@@ -182,8 +193,6 @@
       </SubType>
     </ClInclude>
     <ClInclude Include="QAPCluster.hpp" />
-    <ClInclude Include="Rect.hpp" />
-    <ClInclude Include="SkylineBinPack.hpp" />
     <ClInclude Include="Utils.hpp">
       <SubType>
       </SubType>

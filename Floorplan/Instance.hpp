@@ -4,16 +4,10 @@
 //
 #pragma once
 
-#include <iostream>
-#include <string>
-#include <list>
-#include <vector>
-#include <deque>
-#include <fstream>
-#include <cassert>
 #include <algorithm>
+#include <cassert>
 
-#include "Rect.hpp"
+#include "Data.hpp"
 #include "Utils.hpp"
 
 using namespace std;
@@ -26,11 +20,12 @@ public:
 	string blocks_path() const { return instance_dir() + benchmark_dir() + type_dir() + _ins_name + ".blocks"; }
 	string nets_path() const { return instance_dir() + benchmark_dir() + type_dir() + _ins_name + ".nets"; }
 	string pl_path() const { return instance_dir() + benchmark_dir() + type_dir() + _ins_name + ".pl"; }
+	string ins_html_path() const { return instance_dir() + benchmark_dir() + type_dir() + _ins_name + ".html"; }
 	string fp_path() const { return solution_dir() + benchmark_dir() + _ins_name + ".fp"; }
 	string fp_path_with_time() const { return solution_dir() + benchmark_dir() + _ins_name + "." + utils::Date::to_long_str() + ".fp"; }
-	string html_path() const { return solution_dir() + benchmark_dir() + _ins_name + ".html"; }
-	string html_path_with_time() const { return solution_dir() + benchmark_dir() + _ins_name + "." + utils::Date::to_long_str() + ".html"; }
-	string solution_path() const { return solution_dir() + _ins_bench + ".csv"; }
+	string fp_html_path() const { return solution_dir() + benchmark_dir() + _ins_name + ".html"; }
+	string fp_html_path_with_time() const { return solution_dir() + benchmark_dir() + _ins_name + "." + utils::Date::to_long_str() + ".html"; }
+	string log_path() const { return solution_dir() + _ins_bench + ".csv"; }
 
 private:
 	static string instance_dir() { return "Instance/"; }
@@ -44,49 +39,32 @@ public:
 	const string _ins_name;
 };
 
-struct Block {
-	string name;
-	int width, height;
-	int area;
-	int x_coordinate, y_coordinate;
-	bool rotate;
-};
-
-struct Terminal {
-	string name;
-	int x_coordinate, y_coordinate;
-};
-
-struct Net {
-	int degree;
-	vector<int> block_list;
-	vector<int> terminal_list;
-};
-
 class Instance {
 public:
 	Instance(const Environment &env) : _env(env), _fixed_width(0), _fixed_height(0) { read_instance(); }
 
 	/// 待打包矩形列表，默认w≤h避免后续计算增加无用判断
-	vector<rbp::Rect> get_rects(bool rotated = true) const {
-		vector<rbp::Rect> rects;
+	vector<Rect> get_rects(bool rotated = true) const {
+		vector<Rect> rects;
 		rects.reserve(_block_num);
 		if (rotated) {
 			for (int i = 0; i < _block_num; ++i) {
-				rects.push_back({ i, 0,
+				rects.push_back({ i, -1,
 					_blocks[i].x_coordinate,
 					_blocks[i].y_coordinate,
 					min(_blocks[i].width, _blocks[i].height),
-					max(_blocks[i].width, _blocks[i].height) });
+					max(_blocks[i].width, _blocks[i].height),
+					_blocks[i].area });
 			}
 		}
 		else {
 			for (int i = 0; i < _block_num; ++i) {
-				rects.push_back({ i, 0,
+				rects.push_back({ i, -1,
 					_blocks[i].x_coordinate,
 					_blocks[i].y_coordinate,
 					_blocks[i].width,
-					_blocks[i].height });
+					_blocks[i].height,
+					_blocks[i].area });
 			}
 		}
 		return rects;
@@ -94,13 +72,11 @@ public:
 
 	const vector<Block> & get_blocks() const { return _blocks; }
 	const vector<Terminal> & get_terminals() const { return _terminals; }
-	const vector<Net> & get_net_list() const { return _nets; }
+	const vector<Net> & get_netlist() const { return _nets; }
 
 	int get_block_num() const { return _block_num; }
 	int get_terminal_num() const { return _terminal_num; }
 	int get_net_num() const { return _net_num; }
-
-	int get_block_area(int i) const { return _blocks[i].area; }
 	int get_total_area() const { return _total_area; }
 
 	int get_fixed_width() const { return _fixed_width; }
@@ -133,7 +109,6 @@ private:
 			fscanf(file, "%s hardrectilinear 4 (%d, %d) (%d, %d) (%d, %d) (%d, %d)\n",
 				block_name, &a, &b, &c, &d, &_blocks[i].width, &_blocks[i].height, &e, &f);
 			_blocks[i].name = block_name;
-			_blocks[i].rotate = false;
 			_blocks[i].area = _blocks[i].width * _blocks[i].height;
 			_total_area += _blocks[i].area;
 		}

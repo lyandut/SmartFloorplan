@@ -4,12 +4,11 @@
 //
 #pragma once
 
-#include <string>
 #include <ctime>
 #include <sstream>
 #include <iomanip>
 
-const int INF = 0x3f3f3f3f;
+#include "Visualizer.hpp"
 
 namespace utils {
 
@@ -18,9 +17,8 @@ namespace utils {
 	// 跳过文件中的n行 
 	static void skip(FILE *file, int line_num) {
 		char linebuf[1000];
-		for (int i = 0; i < line_num; ++i) {
+		for (int i = 0; i < line_num; ++i)
 			fgets(linebuf, sizeof(linebuf), file); // skip
-		}
 	}
 
 	class Date {
@@ -36,7 +34,6 @@ namespace utils {
 		static const string to_long_str() {
 			ostringstream os;
 			time_t now = time(0);
-			//os << put_time(localtime(&now), "%y-%m-%e-%H_%M_%S");
 			os << put_time(localtime(&now), "%y%m%d%H%M%S");
 			return os.str();
 		}

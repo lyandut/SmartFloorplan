@@ -9,6 +9,7 @@
 #include <gurobi_c++.h>
 #include "../QAPSolver/QAPSolver.hpp"
 
+#include "Config.hpp"
 #include "Instance.hpp"
 
 namespace qapc {
@@ -19,11 +20,10 @@ namespace qapc {
 	public:
 
 		QAPCluster(const Instance &ins, int dimension) : _ins(ins), _dimension(dimension) {
-			build_graph(Config::LevelGraphConnection::Direct);
+			build_graph(Config::LevelGraphConnect::Direct);
 		}
 
 		/// 计算QAP的flow matrix
-		/// [deprecated] gurobi_cluster(flow_matrix, _dimension * _dimension, bin_area);
 		vector<vector<int>> cal_flow_matrix(Config::LevelFlow method) {
 			vector<vector<int>> flow_matrix;
 			switch (method) {
@@ -41,7 +41,7 @@ namespace qapc {
 		}
 
 		/// 计算QAP的distance matrix
-		vector<vector<int>> cal_distance_matrix(Config::LevelDistance method) {
+		vector<vector<int>> cal_distance_matrix(Config::LevelDist method) {
 			int node_num = _dimension * _dimension;
 			_distance_nodes.resize(node_num);
 			for (int x = 0; x < _dimension; ++x) {
@@ -73,7 +73,7 @@ namespace qapc {
 			vector<vector<bool>> group_neighbors(group_num, vector<bool>(group_num, false));
 			for (int gi = 0; gi < group_num; ++gi) {
 				for (int gj = gi + 1; gj < group_num; ++gj) {
-					if (1 == cal_distance(Config::LevelDistance::ChebyshevDis, // 切比雪夫距离为1定义为邻居
+					if (1 == cal_distance(Config::LevelDist::ChebyshevDist, // 切比雪夫距离为1定义为邻居
 						_distance_nodes.at(gi).first, _distance_nodes.at(gi).second,
 						_distance_nodes.at(gj).first, _distance_nodes.at(gj).second)) {
 						group_neighbors[gi][gj] = true;
@@ -85,11 +85,11 @@ namespace qapc {
 		}
 
 		/// 计算分组边界信息
-		vector<rbp::Boundary> cal_group_boundaries(int bin_width, int bin_height) const {
+		vector<Boundary> cal_group_boundaries(int bin_width, int bin_height) const {
 			int group_num = _dimension * _dimension;
-			vector<rbp::Boundary> group_boundaries(group_num);
-			double unit_width = 1.0*bin_width / _dimension;
-			double unit_height = 1.0*bin_height / _dimension;
+			vector<Boundary> group_boundaries(group_num);
+			double unit_width = 1.0 * bin_width / _dimension;
+			double unit_height = 1.0 * bin_height / _dimension;
 			for (int gi = 0; gi < group_num; ++gi) {
 				group_boundaries[gi].x = unit_width * _distance_nodes.at(gi).first;
 				group_boundaries[gi].y = unit_height * _distance_nodes.at(gi).second;
@@ -99,19 +99,19 @@ namespace qapc {
 			return group_boundaries;
 		}
 
-		static int cal_distance(Config::LevelDistance method, int x1, int y1, int x2, int y2) {
+		static int cal_distance(Config::LevelDist method, int x1, int y1, int x2, int y2) {
 			int distance = 0;
 			switch (method) {
-			case Config::LevelDistance::EuclideanDis:
+			case Config::LevelDist::EuclideanDist:
 				distance = round(sqrt(pow(x1 - x2, 2) + pow(y1 - y2, 2)));
 				break;
-			case Config::LevelDistance::ManhattanDis:
+			case Config::LevelDist::ManhattanDist:
 				distance = abs(x1 - x2) + abs(y1 - y2);
 				break;
-			case Config::LevelDistance::ChebyshevDis:
+			case Config::LevelDist::ChebyshevDist:
 				distance = max(abs(x1 - x2), abs(y1 - y2));
 				break;
-			case Config::LevelDistance::EuclideanSqrDis:
+			case Config::LevelDist::EuclideanSqrDist:
 				distance = pow(x1 - x2, 2) + pow(y1 - y2, 2);
 				break;
 			default:
@@ -125,9 +125,9 @@ namespace qapc {
 		/// 结合net_list还原出图
 		/// [todo] 需要将terminal也加入图中
 		/// [todo] 考虑非直连的边，需要结合最短路径算法求跳数，但metis不支持浮点型权重
-		void build_graph(Config::LevelGraphConnection method) {
+		void build_graph(Config::LevelGraphConnect method) {
 			_graph.resize(_ins.get_block_num(), vector<int>(_ins.get_block_num(), 0));
-			for (auto &net : _ins.get_net_list()) {
+			for (auto &net : _ins.get_netlist()) {
 				for (int i = 0; i < net.block_list.size(); ++i) {
 					for (int j = i + 1; j < net.block_list.size(); ++j) {
 						int a = net.block_list[i];
@@ -138,7 +138,7 @@ namespace qapc {
 				}
 			}
 
-			if (method == Config::LevelGraphConnection::Indirect) {}
+			if (method == Config::LevelGraphConnect::Indirect) {}
 		}
 
 		/// 邻接矩阵转压缩图（CSR）
@@ -149,7 +149,7 @@ namespace qapc {
 			adjwgt.reserve(_graph.size() * _graph.size());
 			for (int i = 0; i < _graph.size(); ++i) {
 				xadj.push_back(adjncy.size());
-				vwgt.push_back(_ins.get_block_area(i));
+				vwgt.push_back(_ins.get_blocks().at(i).area);
 				for (int j = 0; j < _graph.size(); ++j) {
 					if (i == j) { continue; }
 					if (_graph[i][j] >= 1) {
@@ -245,7 +245,7 @@ namespace qapc {
 				for (int p = 0; p < group_num; ++p) {
 					GRBLinExpr sum_area_p = 0;
 					for (int i = 0; i < _graph.size(); ++i) {
-						sum_area_p += x[i][p] * _ins.get_block_area(i);
+						sum_area_p += x[i][p] * _ins.get_blocks().at(i).area;
 					}
 					gm.addConstr(sum_area_p <= bin_area / group_num);
 				}
@@ -295,14 +295,14 @@ namespace qapc {
 		}
 
 	public:
-		// `qap_sol[part[rect.id]] = distance_node_id = group_id`
+		vector<vector<int>> _graph;
 		vector<int> part;
 		vector<int> qap_sol;
-		const int _dimension;
+		// `qap_sol[part[rect.id]] = distance_node_id = group_id`
 
 	private:
 		const Instance &_ins;
-		vector<vector<int>> _graph;
+		const int _dimension;
 		vector<pair<int, int>> _distance_nodes;
 	};
 
