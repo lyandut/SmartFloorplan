@@ -14,6 +14,21 @@
 
 namespace qapc {
 
+	static double cal_distance(Config::LevelDist method, double x1, double y1, double x2, double y2) {
+		double distance = 0;
+		switch (method) {
+		case Config::LevelDist::EuclideanDist:
+			distance = sqrt(pow(x1 - x2, 2) + pow(y1 - y2, 2)); break;
+		case Config::LevelDist::ManhattanDist:
+			distance = abs(x1 - x2) + abs(y1 - y2); break;
+		case Config::LevelDist::ChebyshevDist:
+			distance = max(abs(x1 - x2), abs(y1 - y2)); break;
+		default:
+			assert(false); break;
+		}
+		return distance;
+	}
+
 	/// 将算例预处理成QAP算例
 	class QAPCluster {
 
@@ -53,9 +68,9 @@ namespace qapc {
 			vector<vector<int>> distance_matrix(node_num, vector<int>(node_num, 0));
 			for (int i = 0; i < node_num; ++i) {
 				for (int j = i + 1; j < node_num; ++j) {
-					distance_matrix[i][j] = cal_distance(method,
+					distance_matrix[i][j] = round(cal_distance(method,
 						_distance_nodes[i].first, _distance_nodes[i].second,
-						_distance_nodes[j].first, _distance_nodes[j].second);
+						_distance_nodes[j].first, _distance_nodes[j].second));
 					distance_matrix[j][i] = distance_matrix[i][j];
 				}
 			}
@@ -99,32 +114,8 @@ namespace qapc {
 			return group_boundaries;
 		}
 
-		static int cal_distance(Config::LevelDist method, int x1, int y1, int x2, int y2) {
-			int distance = 0;
-			switch (method) {
-			case Config::LevelDist::EuclideanDist:
-				distance = round(sqrt(pow(x1 - x2, 2) + pow(y1 - y2, 2)));
-				break;
-			case Config::LevelDist::ManhattanDist:
-				distance = abs(x1 - x2) + abs(y1 - y2);
-				break;
-			case Config::LevelDist::ChebyshevDist:
-				distance = max(abs(x1 - x2), abs(y1 - y2));
-				break;
-			case Config::LevelDist::EuclideanSqrDist:
-				distance = pow(x1 - x2, 2) + pow(y1 - y2, 2);
-				break;
-			default:
-				assert(false);
-				break;
-			}
-			return distance;
-		}
-
 	private:
 		/// 结合net_list还原出图
-		/// [todo] 需要将terminal也加入图中
-		/// [todo] 考虑非直连的边，需要结合最短路径算法求跳数，但metis不支持浮点型权重
 		void build_graph(Config::LevelGraphConnect method) {
 			_graph.resize(_ins.get_block_num(), vector<int>(_ins.get_block_num(), 0));
 			for (auto &net : _ins.get_netlist()) {
@@ -138,6 +129,7 @@ namespace qapc {
 				}
 			}
 
+			/// [todo] 考虑非直连的边，需要结合最短路径算法求跳数，但metis不支持浮点型权重
 			if (method == Config::LevelGraphConnect::Indirect) {}
 		}
 

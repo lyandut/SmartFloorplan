@@ -12,40 +12,12 @@ namespace fbp {
 
 	class BeamSearcher : public FloorplanPacker {
 
-		/// Space定义
-		struct SkylineSpace {
-			int x;
-			int y;
-			int width;
-			int hl;
-			int hr;
-		};
-
-		static SkylineSpace skyline_nodo_to_space(const Skyline &skyline, int skyline_index) {
-			int hl, hr;
-			if (skyline.size() == 1) {
-				hl = hr = INF - skyline[skyline_index].y;
-			}
-			else if (skyline_index == 0) {
-				hl = INF - skyline[skyline_index].y;
-				hr = skyline[skyline_index + 1].y - skyline[skyline_index].y;
-			}
-			else if (skyline_index == skyline.size() - 1) {
-				hl = skyline[skyline_index - 1].y - skyline[skyline_index].y;
-				hr = INF - skyline[skyline_index].y;
-			}
-			else {
-				hl = skyline[skyline_index - 1].y - skyline[skyline_index].y;
-				hr = skyline[skyline_index + 1].y - skyline[skyline_index].y;
-			}
-			return { skyline[skyline_index].x, skyline[skyline_index].y, skyline[skyline_index].width, hl, hr };
-		}
-
 		/// α、γ层节点定义
 		struct BeamNode {
 			vector<Rect> dst; // 已放置矩形，partial/complete solution
 			list<int> rects;  // 未放置矩形
 			vector<bool> is_packed;
+			Netwire netwire;
 			Skyline skyline;
 			int bl_index; // bottom_left_skyline_index
 		};
@@ -57,54 +29,58 @@ namespace fbp {
 			int chosen_rect_width; // 旋转之后的宽度
 			int chosen_rect_height; // 同上
 			int chosen_rect_xcoord; // 选中矩形的x坐标（靠左/右放置）
-			int area_score; // 面积打分
-			int wire_score; // 线长打分
-			double local_eval; // 局部评估，打分策略
-			double global_eval; // 全局评估，目标函数
-			double look_ahead_eval; // 向前看评估，目标函数
+			int area_score; // 面积打分，max
+			int wire_score; // 线长打分，max
+			double local_eval; // 局部评估，打分策略，max
+			double global_eval; // 全局评估，目标函数，min
+			double look_ahead_eval; // 向前看评估，目标函数，min
 		};
 
 	public:
 		BeamSearcher() = delete;
 
-		BeamSearcher(const Instance &ins, const vector<Rect> &src, int bin_width, default_random_engine &gen,
-			const vector<vector<int>> &graph) :
-			FloorplanPacker(ins, src, bin_width, gen), _graph(graph) {
-			init_beam_tree();
-		}
+		BeamSearcher(const Instance &ins, const vector<Rect> &src, int bin_width, const vector<vector<int>> &graph, default_random_engine &gen) :
+			FloorplanPacker(ins, src, bin_width, graph, gen) {}
 
-		void run(int beam_width, double alpha, double beta, Config::LevelWireLength level_wl,
+		void run(int beam_width, double alpha, double beta, Config::LevelWireLength level_wl, Config::LevelObjDist level_dist,
 			Config::LevelGroupSearch level_gs = Config::LevelGroupSearch::NoGroup) {
+
+			reset_beam_tree();
 			int filter_width = beam_width * 2;
 			while (!_beam_tree.front().rects.empty()) {
-				vector<BranchNode> filter_children; filter_children.reserve(filter_width);
-				vector<BranchNode> beam_children; beam_children.reserve(beam_width);
-
+				vector<BranchNode> filter_children; filter_children.reserve(_beam_tree.size() * _src.size() * 2);
 				for (auto &parent : _beam_tree) {
 					check_parent(parent);
-					vector<BranchNode> children = branch(parent);
-					local_evaluation(children);
+					vector<BranchNode> children = branch(parent, level_dist);
 					// 1.局部评估：从全体子节点中选出`filter_width`个，每个父节点贡献`filter_width/_beam_tree.size()`个
 					if (children.size() > filter_width / _beam_tree.size()) {
+						local_evaluation(children, alpha, beta);
 						nth_element(children.begin(), children.begin() + filter_width / _beam_tree.size() - 1, children.end(),
-							[](auto &lhs, auto &rhs) { return lhs.local_eval < rhs.local_eval; });
-						filter_children.insert(filter_children.end(), children.begin(), children.begin() + filter_width / _beam_tree.size());
+							[](auto &lhs, auto &rhs) { return lhs.local_eval > rhs.local_eval; });
+						auto nth_iter = children.begin() + filter_width / _beam_tree.size() - 1;
+						auto left_iter = nth_iter, right_iter = nth_iter;
+						while (left_iter->local_eval == nth_iter->local_eval && left_iter != children.begin()) { left_iter = prev(left_iter); }
+						while (right_iter->local_eval == nth_iter->local_eval && right_iter != children.end()) { right_iter = next(right_iter); }
+						if (left_iter != children.begin()) { ++left_iter; }
+						shuffle(left_iter, right_iter, _gen); // 同分乱序随机取
+						//shuffle(children.begin(), right_iter, _gen); // 全部乱序随机取
+						filter_children.insert(filter_children.end(), children.begin(), next(nth_iter));
 					}
-					else { // 不足`filter_width/_beam_tree.size()`个则全选中
-						filter_children.insert(filter_children.end(), children.begin(), children.end());
-					}
+					// 不足`filter_width/_beam_tree.size()`个则全选中
+					else { filter_children.insert(filter_children.end(), children.begin(), children.end()); }
 				}
 
 				for_each(filter_children.begin(), filter_children.end(), [=](auto &child) {
-					global_evaluation(child, alpha, beta, level_wl);
-					look_ahead_evaluation(child, alpha, beta, level_wl);
+					global_evaluation(child, alpha, beta, level_wl, level_dist);
+					look_ahead_evaluation(child, alpha, beta, level_wl, level_dist);
 				});
 
+				vector<BranchNode> beam_children; beam_children.reserve(filter_children.size());
 				if (beam_width == 1) {
 					beam_children.push_back(*min_element(filter_children.begin(), filter_children.end(),
 						[](auto &lhs, auto &rhs) { return lhs.global_eval < rhs.global_eval; }));
 				}
-				else {
+				else if (filter_children.size() > beam_width) {
 					// 2.全局评估：从`filter_children`中选出`beam_width/2`个
 					nth_element(filter_children.begin(), filter_children.begin() + beam_width / 2 - 1, filter_children.end(),
 						[](auto &lhs, auto &rhs) { return lhs.global_eval < rhs.global_eval; });
@@ -114,9 +90,10 @@ namespace fbp {
 						[](auto &lhs, auto &rhs) { return lhs.look_ahead_eval < rhs.look_ahead_eval; });
 					beam_children.insert(beam_children.end(), filter_children.begin() + beam_width / 2, filter_children.begin() + beam_width);
 				}
+				else { beam_children.insert(beam_children.end(), filter_children.begin(), filter_children.end()); }
 
 				// 4.执行选中动作，树往下生长一层
-				vector<BeamNode> new_beam_tree; new_beam_tree.reserve(beam_width);
+				vector<BeamNode> new_beam_tree; new_beam_tree.reserve(beam_children.size());
 				for (auto &child : beam_children) {
 					BeamNode parent_copy = *child.parent;
 					insert_chosen_rect_for_parent(parent_copy, child.chosen_rect_index,
@@ -128,12 +105,20 @@ namespace fbp {
 		}
 
 	private:
-		void init_beam_tree() {
+		/// 每次迭代重置_beam_tree
+		void reset_beam_tree() {
+			_beam_tree.clear();
 			BeamNode root;
 			root.dst = _src;
 			root.rects.resize(_src.size());
 			iota(root.rects.begin(), root.rects.end(), 0);
 			root.is_packed.resize(_src.size(), false);
+			root.netwire.resize(_ins.get_net_num());
+			for_each(root.netwire.begin(), root.netwire.end(), [](auto &netwire_node) {
+				netwire_node.max_x = netwire_node.max_y = 0;
+				netwire_node.min_x = netwire_node.min_y = numeric_limits<double>::max();
+				netwire_node.hpwl = 0.0;
+			});
 			root.skyline.clear();
 			root.skyline.push_back({ 0,0,_bin_width });
 			root.bl_index = 0;
@@ -170,7 +155,7 @@ namespace fbp {
 		}
 
 		/// 分支函数
-		vector<BranchNode> branch(const BeamNode &parent) {
+		vector<BranchNode> branch(const BeamNode &parent, Config::LevelObjDist level_dist) {
 			vector<BranchNode> children; children.reserve(parent.rects.size() * 2);
 			for (int r : parent.rects) {
 				for (int rotate = 0; rotate <= 1; ++rotate) {
@@ -181,7 +166,7 @@ namespace fbp {
 					child.chosen_rect_height = rotate ? _src.at(r).width : _src.at(r).height;
 					if (score_area_and_set_xcoord(parent, child.chosen_rect_width, child.chosen_rect_height,
 						child.chosen_rect_xcoord, child.area_score)) {
-						child.wire_score = score_wire(child);
+						child.wire_score = score_wire(child, level_dist);
 						children.push_back(move(child));
 					}
 				}
@@ -190,41 +175,44 @@ namespace fbp {
 		}
 
 		/// 局部评估，打分策略
-		void local_evaluation(vector<BranchNode> &children) {
+		void local_evaluation(vector<BranchNode> &children, double alpha, double beta) {
 			vector<int> area_rank(children.size());
 			vector<int> wire_rank(children.size());
 			iota(area_rank.begin(), area_rank.end(), 0);
 			iota(wire_rank.begin(), wire_rank.end(), 0);
-			sort(area_rank.begin(), area_rank.end(), [&](int lhs, int rhs) { return children[lhs].area_score > children[rhs].area_score; });
-			sort(wire_rank.begin(), wire_rank.end(), [&](int lhs, int rhs) { return children[lhs].wire_score > children[rhs].wire_score; });
+			sort(area_rank.begin(), area_rank.end(), [&](int lhs, int rhs) { return children[lhs].area_score < children[rhs].area_score; });
+			sort(wire_rank.begin(), wire_rank.end(), [&](int lhs, int rhs) { return children[lhs].wire_score < children[rhs].wire_score; });
 			for (int i = 0; i < children.size(); ++i) {
-				children[i].local_eval = distance(area_rank.begin(), find(area_rank.begin(), area_rank.end(), i))
-					+ distance(wire_rank.begin(), find(wire_rank.begin(), wire_rank.end(), i));
+				children[i].local_eval =
+					alpha * distance(area_rank.begin(), find(area_rank.begin(), area_rank.end(), i)) +
+					beta * distance(wire_rank.begin(), find(wire_rank.begin(), wire_rank.end(), i));
 			}
 		}
 
 		/// 全局评估，贪心走到底，目标函数
-		void global_evaluation(BranchNode &child, double alpha, double beta, Config::LevelWireLength level_wl) {
+		void global_evaluation(BranchNode &child, double alpha, double beta,
+			Config::LevelWireLength level_wl, Config::LevelObjDist level_dist) {
 			BeamNode parent_copy = *child.parent;
 			insert_chosen_rect_for_parent(parent_copy, child.chosen_rect_index,
 				child.chosen_rect_width, child.chosen_rect_height, child.chosen_rect_xcoord);
 			int target_area = greedy_construction(parent_copy, false) * _bin_width;
 			double dist;
-			double target_wirelength = cal_wirelength(parent_copy, dist, level_wl);
+			double target_wirelength = cal_wirelength(parent_copy.dst, parent_copy.is_packed, dist, level_wl, level_dist);
 			child.global_eval = cal_objective(target_area, dist, alpha, beta);
-			update_objective(child.global_eval, target_area, target_wirelength, parent_copy);
+			update_objective(child.global_eval, target_area, target_wirelength, parent_copy.dst);
 		}
 
 		/// 向前看评估，目标函数
-		void look_ahead_evaluation(BranchNode &child, double alpha, double beta, Config::LevelWireLength level_wl) {
+		void look_ahead_evaluation(BranchNode &child, double alpha, double beta,
+			Config::LevelWireLength level_wl, Config::LevelObjDist level_dist) {
 			BeamNode parent_copy = *child.parent;
 			insert_chosen_rect_for_parent(parent_copy, child.chosen_rect_index,
 				child.chosen_rect_width, child.chosen_rect_height, child.chosen_rect_xcoord);
 			int target_area = greedy_construction(parent_copy, true) * _bin_width;
 			double dist;
-			double target_wirelength = cal_wirelength(parent_copy, dist, level_wl);
+			double target_wirelength = cal_wirelength(parent_copy.dst, parent_copy.is_packed, dist, level_wl, level_dist);
 			child.look_ahead_eval = cal_objective(target_area, dist, alpha, beta);
-			update_objective(child.look_ahead_eval, target_area, target_wirelength, parent_copy);
+			if (parent_copy.rects.empty()) { update_objective(child.look_ahead_eval, target_area, target_wirelength, parent_copy.dst); }
 		}
 
 		/// 面积打分策略 & 设置`rect_xcoord`
@@ -265,22 +253,60 @@ namespace fbp {
 			return true;
 		}
 
-		/// 线长打分策略，[todo] 使用连线数目 or 连线长度
-		int score_wire(BranchNode &node) {
-			int wire_num = 0, wire_length = 0;
-			for (int i = 0; i < _src.size(); ++i) {
-				if (node.chosen_rect_index != i && node.parent->is_packed[i]) {
-					wire_num += _graph[node.chosen_rect_index][i];
-					wire_length += QAPCluster::cal_distance(Config::LevelDist::EuclideanDist,
-						node.chosen_rect_xcoord + node.chosen_rect_width / 2,
-						node.parent->skyline[node.parent->bl_index].y + node.chosen_rect_height / 2,
-						node.parent->dst[i].x + node.parent->dst[i].width / 2,
-						node.parent->dst[i].y + node.parent->dst[i].height / 2
-					) * _graph[node.chosen_rect_index][i];
+		/// 线长打分策略
+		double score_wire(BranchNode &node, Config::LevelObjDist level_dist) {
+			double avg_length;
+			double pin_x = node.chosen_rect_xcoord + node.chosen_rect_width * 0.5;
+			double pin_y = node.parent->skyline[node.parent->bl_index].y + node.chosen_rect_height * 0.5;
+			switch (level_dist) {
+			case Config::LevelObjDist::SqrEuclideanDist: {
+				int wire_num = 0;
+				double wire_length = 0;
+				for (int i = 0; i < _graph.size(); ++i) {
+					if (_graph[i][node.chosen_rect_index] && node.parent->is_packed[i]) {
+						wire_num += 1; // 两个块同时属于多个网，多条重复连线仅算一次
+						wire_length += qapc::cal_distance(Config::LevelDist::EuclideanDist, pin_x, pin_y,
+							node.parent->dst[i].x + node.parent->dst[i].width * 0.5,
+							node.parent->dst[i].y + node.parent->dst[i].height * 0.5);
+					}
 				}
+				avg_length = wire_length / wire_num;
+				break;
 			}
-			int avg_length = wire_length / wire_num;
-			return wire_num;
+			case Config::LevelObjDist::SqrManhattanDist: {
+				int wire_num = 0;
+				double wire_length = 0;
+				for (int i = 0; i < _graph.size(); ++i) {
+					if (_graph[i][node.chosen_rect_index] && node.parent->is_packed[i]) {
+						wire_num += 1; // 两个块同时属于多个网，多条重复连线仅算一次
+						wire_length += qapc::cal_distance(Config::LevelDist::ManhattanDist, pin_x, pin_y,
+							node.parent->dst[i].x + node.parent->dst[i].width * 0.5,
+							node.parent->dst[i].y + node.parent->dst[i].height * 0.5);
+					}
+				}
+				avg_length = wire_length / wire_num;
+				break;
+			}
+			case Config::LevelObjDist::SqrHpwlDist: {
+				int delta_net_num = 0;
+				double delta_net_length = 0;
+				for (int nid : _ins.get_blocks().at(node.chosen_rect_index).net_ids) {
+					double max_x = max(node.parent->netwire[nid].max_x, pin_x);
+					double min_x = min(node.parent->netwire[nid].min_x, pin_x);
+					double max_y = max(node.parent->netwire[nid].max_y, pin_y);
+					double min_y = min(node.parent->netwire[nid].min_y, pin_y);
+					delta_net_length += (max_x - min_x + max_y - min_y) - node.parent->netwire[nid].hpwl;
+					delta_net_num += delta_net_length ? 1 : 0; // 没有变化的网不计入
+				}
+				avg_length = delta_net_length / delta_net_num;
+				break;
+			}
+			default:
+				assert(false);
+				break;
+			}
+
+			return avg_length;
 		}
 
 		/// 执行选中的动作，更新parent
@@ -312,6 +338,19 @@ namespace fbp {
 				parent.skyline[parent.bl_index].width -= new_skyline_node.width;
 				merge_skylines(parent.skyline);
 			}
+
+			// 更新netwire
+			double pin_x = parent.dst[rect_index].x + parent.dst[rect_index].width * 0.5;
+			double pin_y = parent.dst[rect_index].y + parent.dst[rect_index].height * 0.5;
+			for (int nid : _ins.get_blocks().at(rect_index).net_ids) {
+				NetwireNode &netwire_node = parent.netwire[nid];
+				netwire_node.max_x = max(netwire_node.max_x, pin_x);
+				netwire_node.min_x = min(netwire_node.min_x, pin_x);
+				netwire_node.max_y = max(netwire_node.max_y, pin_y);
+				netwire_node.min_y = min(netwire_node.min_y, pin_y);
+				netwire_node.hpwl = max(0.0, netwire_node.max_x - netwire_node.min_x + netwire_node.max_y - netwire_node.min_y);
+			}
+
 			return new_skyline_node.y;
 		}
 
@@ -392,73 +431,7 @@ namespace fbp {
 			}
 		}
 
-		/// 计算线长，默认引脚在中心
-		double cal_wirelength(const BeamNode &parent, double &dist, Config::LevelWireLength method) {
-			double total_wirelength = 0;
-			dist = 0;
-			for (auto &net : _ins.get_netlist()) {
-				double max_x = 0, min_x = numeric_limits<double>::max();
-				double max_y = 0, min_y = numeric_limits<double>::max();
-				for (int b : net.block_list) {
-					if (parent.is_packed.at(b)) { // 只计算当前已放置的块
-						double pin_x = parent.dst.at(b).x + parent.dst.at(b).width * 0.5;
-						double pin_y = parent.dst.at(b).y + parent.dst.at(b).height * 0.5;
-						max_x = max(max_x, pin_x);
-						min_x = min(min_x, pin_x);
-						max_y = max(max_y, pin_y);
-						min_y = min(min_y, pin_y);
-					}
-				}
-				if (method == Config::LevelWireLength::BlockAndTerminal) {
-					for (int t : net.terminal_list) {
-						double pad_x = _ins.get_terminals().at(t).x_coordinate;
-						double pad_y = _ins.get_terminals().at(t).y_coordinate;
-						max_x = max(max_x, pad_x);
-						min_x = min(min_x, pad_x);
-						max_y = max(max_y, pad_y);
-						min_y = min(min_y, pad_y);
-					}
-				}
-				double hpwl = max_x - min_x + max_y - min_y;
-				total_wirelength += hpwl;
-				dist += hpwl * hpwl;
-			}
-
-			return total_wirelength;
-		}
-
-		/// 目标函数：EDAthon-2020-P4
-		double cal_objective(int area, double dist, double alpha, double beta) {
-			return (alpha * area + beta * dist) / _ins.get_total_area();
-		}
-
-		void update_objective(double objective, int area, double wire, const BeamNode &parent) {
-			if (parent.rects.empty() && objective < _objective) {
-				_objective = objective;
-				_obj_area = area;
-				_obj_fillratio = 1.0 * _ins.get_total_area() / _obj_area;
-				_obj_wirelength = wire;
-				_dst = parent.dst;
-			}
-		}
-
-		/// 合并同一level的skyline节点.
-		static void merge_skylines(Skyline &skyline) {
-			skyline.erase(
-				remove_if(skyline.begin(), skyline.end(), [](auto &rhs) { return rhs.width <= 0; }),
-				skyline.end()
-			);
-			for (int i = 0; i < skyline.size() - 1; ++i) {
-				if (skyline[i].y == skyline[i + 1].y) {
-					skyline[i].width += skyline[i + 1].width;
-					skyline.erase(skyline.begin() + i + 1);
-					--i;
-				}
-			}
-		}
-
 	private:
-		const vector<vector<int>> &_graph; // 线长打分：评估块之间连接的紧密程度
 		vector<BeamNode> _beam_tree;
 	};
 

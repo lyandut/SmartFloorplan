@@ -19,7 +19,7 @@
 static constexpr int INF = 0x3f3f3f3f;
 
 static std::vector<std::pair<std::string, std::string>> ins_list{
-	{"MCNC", "apte"},{"MCNC", "hp"},{"MCNC", "xerox"},{"MCNC", "ami33"},{"MCNC", "ami49"},
+	{"MCNC", "apte"},{"MCNC", "xerox"},{"MCNC", "hp"},{"MCNC", "ami33"},{"MCNC", "ami49"},
 	{"GSRC", "n10"},{"GSRC", "n30"},{"GSRC", "n50"},{"GSRC", "n100"},{"GSRC", "n200"},{"GSRC", "n300"}
 };
 
@@ -28,18 +28,19 @@ struct Config {
 	unsigned int random_seed = std::random_device{}(); // 随机种子，release版本使用`random_device{}();`
 	//unsigned int random_seed = 2231403657;
 
-	double alpha = 1.0, beta = 0.0;        // 控制面积、线长优化权重
+	double alpha = 0.8, beta = 0.2;        // 控制面积、线长优化权重
 	double lb_scale = 0.8, ub_scale = 1.2; // 控制分支数目、长宽比
 
 	int ub_time = 3600; // ASA超时时间
-	int ub_iter = 9999; // RLS最大迭代次数/BS最大树宽度
+	int ub_iter = 8192; // RLS最大迭代次数/BS最大树宽度
 
 	int dimension = 5;  // QAP最大分组维度. e.g.dimension=5则划分25个分组，不足25个block则求上界
 
-	enum LevelCandidateWidth { // [deprecated]
-		CombRotate,            // 考虑组合及旋转的所有情况
-		CombShort,             // 考虑短边的组合
-		Interval               // 以间隔等距划分宽度区间
+	enum LevelCandidateWidth {
+		CombRotate,            // [deprecated] 考虑组合及旋转的所有情况
+		CombShort,             // [deprecated] 考虑短边的组合
+		Interval,              // 以间隔等距划分宽度区间
+		Sqrt                   // 利用平方根控制长宽比
 	} level_asa_cw = Interval;
 
 	enum LevelFloorplanPacker {
@@ -52,11 +53,11 @@ struct Config {
 		BlockAndTerminal   // [deprecated] 计算block和terminal互连线长
 	} level_fbp_wl = BlockOnly;
 
-	enum LevelObjective { // [deprecated]
-		AvgNorm,          // 使用平均值归一化
-		MinNorm,	      // 使用最小值归一化
-		EDAthon           // 使用EDAthon2020P4目标函数
-	} level_fbp_obj = EDAthon;
+	enum LevelObjDist {   // EDAthon2020P4目标函数中dist计算方法
+		SqrHpwlDist,      // 整个网表半周长的平方
+		SqrEuclideanDist, // 矩形对之间欧式平方距离
+		SqrManhattanDist  // 矩形对之间曼哈顿平方距离
+	} level_fbp_dist = SqrManhattanDist;
 
 	enum LevelQAPCluster {
 		On,
@@ -77,15 +78,14 @@ struct Config {
 
 	enum LevelFlow {
 		Kway,
-		Recursive,
+		Recursive
 	} level_qapc_flow = Kway;
 
 	enum LevelDist {
 		EuclideanDist,   // 欧几里得距离
 		ManhattanDist,   // 曼哈顿距离
-		ChebyshevDist,   // 切比雪夫距离
-		EuclideanSqrDist // 欧式平方距离
-	} level_qapc_dis = ManhattanDist;
+		ChebyshevDist    // 切比雪夫距离
+	} level_qapc_dist = ManhattanDist;
 } cfg;
 
 std::ostream& operator<<(std::ostream &os, const Config &cfg) {
@@ -98,6 +98,13 @@ std::ostream& operator<<(std::ostream &os, const Config &cfg) {
 	switch (cfg.level_fbp_wl) {
 	case Config::LevelWireLength::BlockOnly: os << "BlockOnly,"; break;
 	case Config::LevelWireLength::BlockAndTerminal: os << "BlockAndTerminal,"; break;
+	default: break;
+	}
+
+	switch (cfg.level_fbp_dist) {
+	case Config::LevelObjDist::SqrHpwlDist: os << "SqrHpwlDist,"; break;
+	case Config::LevelObjDist::SqrEuclideanDist: os << "SqrEuclideanDist,"; break;
+	case Config::LevelObjDist::SqrManhattanDist: os << "SqrManhattanDist,"; break;
 	default: break;
 	}
 
@@ -127,11 +134,10 @@ std::ostream& operator<<(std::ostream &os, const Config &cfg) {
 	default: break;
 	}
 
-	switch (cfg.level_qapc_dis) {
+	switch (cfg.level_qapc_dist) {
 	case Config::LevelDist::EuclideanDist: os << "EuclideanDist"; break;
 	case Config::LevelDist::ChebyshevDist: os << "ChebyshevDist"; break;
 	case Config::LevelDist::ManhattanDist: os << "ManhattanDist"; break;
-	case Config::LevelDist::EuclideanSqrDist: os << "EuclideanSqrDist"; break;
 	default: break;
 	}
 

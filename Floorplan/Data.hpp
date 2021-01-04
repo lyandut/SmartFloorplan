@@ -15,18 +15,19 @@ struct Rect {
 	int y;
 	int width;
 	int height;
-	int area;
 };
 
 struct Block {
 	std::string name;
+	std::vector<int> net_ids;
+	int x_coordinate, y_coordinate;
 	int width, height;
 	int area;
-	int x_coordinate, y_coordinate;
 };
 
 struct Terminal {
 	std::string name;
+	std::vector<int> net_ids;
 	int x_coordinate, y_coordinate;
 };
 
@@ -36,7 +37,7 @@ struct Net {
 	std::vector<int> terminal_list;
 };
 
-/// outline分组边界，划分时使用
+/// `group_boundaries`分组边界，划分时使用
 struct Boundary {
 	double x;
 	double y;
@@ -55,6 +56,25 @@ struct SkylineNode {
 };
 
 using Skyline = std::vector<SkylineNode>;
+
+struct SkylineSpace {
+	int x;
+	int y;
+	int width;
+	int hl;
+	int hr;
+};
+
+/// half perimeter wire length of the net
+struct NetwireNode {
+	double min_x;
+	double min_y;
+	double max_x;
+	double max_y;
+	double hpwl;
+};
+
+using Netwire = std::vector<NetwireNode>;
 
 struct DisjointRects {
 	std::vector<Rect> rects;

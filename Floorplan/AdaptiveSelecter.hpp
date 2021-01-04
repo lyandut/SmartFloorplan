@@ -33,20 +33,46 @@ public:
 		_objective(numeric_limits<double>::max()) {}
 
 	void run() {
-		if (_cfg.level_asa_fbp == Config::LevelFloorplanPacker::RandomLocalSearch) {
-			random_local_search();
-		}
-		else { beam_search(); }
-	}
-
-	void random_local_search() {
 		vector<Rect> src = _ins.get_rects();
 
+		// Calculate the set of candidate widths W
+		vector<int> candidate_widths;
+		switch (_cfg.level_asa_cw) {
+		case Config::LevelCandidateWidth::Interval:
+			candidate_widths = cal_candidate_widths_on_interval(src);
+			break;
+		case Config::LevelCandidateWidth::Sqrt:
+			candidate_widths = cal_candidate_widths_on_sqrt(src);
+			break;
+		case Config::LevelCandidateWidth::CombRotate:
+			candidate_widths = cal_candidate_widths_on_combrotate(src);
+			break;
+		case Config::LevelCandidateWidth::CombShort:
+			candidate_widths = cal_candidate_widths_on_combshort(src);
+			break;
+		default: assert(false); break;
+		}
+
+		// 初始化离散概率分布
+		vector<int> probs; probs.reserve(candidate_widths.size());
+		for (int i = 1; i <= candidate_widths.size(); ++i) { probs.push_back(2 * i); }
+		discrete_distribution<> discrete_dist(probs.begin(), probs.end());
+		// 初始化均匀分布
+		uniform_int_distribution<> uniform_dist(0, candidate_widths.size() - 1);
+
+		if (_cfg.level_asa_fbp == Config::LevelFloorplanPacker::RandomLocalSearch)
+			random_local_search(src, candidate_widths, discrete_dist, uniform_dist);
+		else
+			beam_search(src, candidate_widths, discrete_dist, uniform_dist);
+	}
+
+	void random_local_search(vector<Rect> &src, vector<int> &candidate_widths,
+		discrete_distribution<> &discrete_dist, uniform_int_distribution<> &uniform_dist) {
 		// 分组信息①：分配`gid`
 		if (_cfg.level_rls_qapc == Config::LevelQAPCluster::On) {
 			_cluster.cal_qap_sol(
 				_cluster.cal_flow_matrix(_cfg.level_qapc_flow),
-				_cluster.cal_distance_matrix(_cfg.level_qapc_dis)
+				_cluster.cal_distance_matrix(_cfg.level_qapc_dist)
 			);
 			for (auto &rect : src) { rect.gid = _cluster.qap_sol.at(_cluster.part.at(rect.id)) - 1; }
 		}
@@ -54,15 +80,12 @@ public:
 
 		_start = clock(); // 不计算qap调用时间
 
-		// Calculate the set of candidate widths W
-		vector<int> candidate_widths = cal_candidate_widths_on_interval(src);
-
 		// 分支初始化iter=1
 		vector<CandidateWidth> cw_objs; cw_objs.reserve(candidate_widths.size());
 		for (int bin_width : candidate_widths) {
-			cw_objs.push_back({ bin_width, 1, make_shared<RandomLocalSearcher>(_ins, src, bin_width, _gen) });
+			cw_objs.push_back({ bin_width, 1, make_shared<RandomLocalSearcher>(_ins, src, bin_width, _cluster._graph, _gen) });
 			auto rls_solver = dynamic_pointer_cast<RandomLocalSearcher>(cw_objs.back().fbp_solver);
-			rls_solver->run(1, _cfg.alpha, _cfg.beta, _cfg.level_fbp_wl);
+			rls_solver->run(1, _cfg.alpha, _cfg.beta, _cfg.level_fbp_wl, _cfg.level_fbp_dist); // 首次迭代默认LevelGroupSearch::NoGroup
 			check_cwobj(cw_objs.back());
 
 			// 分组信息②：计算`boundaries`和`neighbors`
@@ -77,52 +100,36 @@ public:
 		sort(cw_objs.begin(), cw_objs.end(), [](auto &lhs, auto &rhs) {
 			return lhs.fbp_solver->get_objective() > rhs.fbp_solver->get_objective(); });
 
-		// 初始化离散概率分布
-		vector<int> probs; probs.reserve(cw_objs.size());
-		for (int i = 1; i <= cw_objs.size(); ++i) { probs.push_back(2 * i); }
-		discrete_distribution<> discrete_dist(probs.begin(), probs.end());
-
 		// 迭代优化 
 		while (static_cast<double>(clock() - _start) / CLOCKS_PER_SEC < _cfg.ub_time) {
-			CandidateWidth &picked_width = cw_objs[discrete_dist(_gen)];
+			// 疏散性：50%概率选择，50%随机选择
+			CandidateWidth &picked_width = _gen() % 3 ? cw_objs[discrete_dist(_gen)] : cw_objs[uniform_dist(_gen)];
 			picked_width.iter = min(2 * picked_width.iter, _cfg.ub_iter);
 			auto picked_solver = dynamic_pointer_cast<RandomLocalSearcher>(picked_width.fbp_solver);
-			picked_solver->run(picked_width.iter, _cfg.alpha, _cfg.beta, _cfg.level_fbp_wl, _cfg.level_rls_gs);
+			picked_solver->run(picked_width.iter, _cfg.alpha, _cfg.beta, _cfg.level_fbp_wl, _cfg.level_fbp_dist, _cfg.level_rls_gs);
 			check_cwobj(picked_width);
 			sort(cw_objs.begin(), cw_objs.end(), [](auto &lhs, auto &rhs) {
 				return lhs.fbp_solver->get_objective() > rhs.fbp_solver->get_objective(); });
 		}
 	}
 
-	void beam_search() {
-		vector<Rect> src = _ins.get_rects();
-
-		// Calculate the set of candidate widths W
-		vector<int> candidate_widths = cal_candidate_widths_on_interval(src);
-
-		// 分支初始化iter=1
+	void beam_search(vector<Rect> &src, vector<int> &candidate_widths,
+		discrete_distribution<> &discrete_dist, uniform_int_distribution<> &uniform_dist) {
 		vector<CandidateWidth> cw_objs; cw_objs.reserve(candidate_widths.size());
 		for (int bin_width : candidate_widths) {
-			cw_objs.push_back({ bin_width, 1, make_shared<BeamSearcher>(_ins, src, bin_width, _gen, _cluster._graph) });
+			cw_objs.push_back({ bin_width, 1, make_shared<BeamSearcher>(_ins, src, bin_width, _cluster._graph, _gen) });
 			auto bs_solver = dynamic_pointer_cast<BeamSearcher>(cw_objs.back().fbp_solver);
-			bs_solver->run(1, _cfg.alpha, _cfg.beta, _cfg.level_fbp_wl);
+			bs_solver->run(1, _cfg.alpha, _cfg.beta, _cfg.level_fbp_wl, _cfg.level_fbp_dist);
 			check_cwobj(cw_objs.back());
 		}
-		// 降序排列，越后面的选中概率越大
 		sort(cw_objs.begin(), cw_objs.end(), [](auto &lhs, auto &rhs) {
 			return lhs.fbp_solver->get_objective() > rhs.fbp_solver->get_objective(); });
 
-		// 初始化离散概率分布
-		vector<int> probs; probs.reserve(cw_objs.size());
-		for (int i = 1; i <= cw_objs.size(); ++i) { probs.push_back(2 * i); }
-		discrete_distribution<> discrete_dist(probs.begin(), probs.end());
-
-		// 迭代优化 
 		while (static_cast<double>(clock() - _start) / CLOCKS_PER_SEC < _cfg.ub_time) {
-			CandidateWidth &picked_width = cw_objs[discrete_dist(_gen)];
+			CandidateWidth &picked_width = _gen() % 3 ? cw_objs[discrete_dist(_gen)] : cw_objs[uniform_dist(_gen)];
 			picked_width.iter = min(2 * picked_width.iter, _cfg.ub_iter);
 			auto picked_solver = dynamic_pointer_cast<BeamSearcher>(picked_width.fbp_solver);
-			picked_solver->run(picked_width.iter, _cfg.alpha, _cfg.beta, _cfg.level_fbp_wl);
+			picked_solver->run(picked_width.iter, _cfg.alpha, _cfg.beta, _cfg.level_fbp_wl, _cfg.level_fbp_dist);
 			check_cwobj(picked_width);
 			sort(cw_objs.begin(), cw_objs.end(), [](auto &lhs, auto &rhs) {
 				return lhs.fbp_solver->get_objective() > rhs.fbp_solver->get_objective(); });
@@ -140,21 +147,25 @@ public:
 		}
 	}
 
-	void draw_fp(string html_path) const {
-		utils_visualize_drawer::Drawer html_drawer(html_path, _ins.get_fixed_width(), _ins.get_fixed_height());
+	void draw_fp(string html_path, bool draw_wire = false) const {
+		utils_visualize_drawer::Drawer html_drawer(html_path, _ins.get_fixed_width() * 2, _ins.get_fixed_height() * 2);
 		for (auto &r : _dst) { html_drawer.rect(r.x, r.y, r.width, r.height); }
 		for (auto &t : _ins.get_terminals()) { html_drawer.circle(t.x_coordinate, t.y_coordinate); }
-		//for (auto &net : _ins.get_netlist()) {
-		//	for (int i = 0; i < net.block_list.size(); ++i) {
-		//		for (int j = i + 1; j < net.block_list.size(); ++j) {
-		//			html_drawer.wire(
-		//				_dst[net.block_list[i]].x + _dst[net.block_list[i]].width * 0.5,
-		//				_dst[net.block_list[i]].y + _dst[net.block_list[i]].height * 0.5,
-		//				_dst[net.block_list[j]].x + _dst[net.block_list[j]].width * 0.5,
-		//				_dst[net.block_list[j]].y + _dst[net.block_list[j]].height * 0.5);
-		//		}
-		//	}
-		//}
+		if (draw_wire) {
+			for (auto &net : _ins.get_netlist()) {
+				html_drawer.rc.next();
+				for (int i = 0; i < net.block_list.size(); ++i) {
+					for (int j = i + 1; j < net.block_list.size(); ++j) {
+						html_drawer.wire(
+							_dst[net.block_list[i]].x + _dst[net.block_list[i]].width * 0.5,
+							_dst[net.block_list[i]].y + _dst[net.block_list[i]].height * 0.5,
+							_dst[net.block_list[j]].x + _dst[net.block_list[j]].width * 0.5,
+							_dst[net.block_list[j]].y + _dst[net.block_list[j]].height * 0.5
+						);
+					}
+				}
+			}
+		}
 	}
 
 	void draw_ins() const {
@@ -170,18 +181,16 @@ public:
 		log_file.seekp(0, ios::end);
 		if (log_file.tellp() <= 0) {
 			log_file << "Instance,"
-				"Alpha(AreaWeight),Area,FillRatio,"
-				"Beta(WireWeight),WireLength,Objective,"
+				"Alpha,Area,FillRatio,WHRatio,"
+				"Beta,WireLength,Objective,CheckObj,"
 				"Duration,Iteration,RandomSeed,"
-				"LevelFloorplanPacker,LevelWireLength,"
-				"LevelQAPCluster,LevelGroupSearch,"
-				"LevelGraphConnect,LevelFlow,LevelDist" << endl;
+				"LevelFloorplanPacker,LevelWireLength,LevelObjDist,LevelQAPCluster,"
+				"LevelGroupSearch,LevelGraphConnect,LevelFlow,LevelDist" << endl;
 		}
 		log_file << _env._ins_name << ","
-			<< _cfg.alpha << "," << _best_area << "," << _best_fillratio << ","
-			<< _cfg.beta << "," << _best_wirelength << "," << _objective << ","
-			<< _duration << "," << _iteration << "," << _cfg.random_seed << ","
-			<< _cfg << endl;
+			<< _cfg.alpha << "," << _best_area << "," << _best_fillratio << "," << _best_whratio << ","
+			<< _cfg.beta << "," << _best_wirelength << "," << _objective << "," << check_dst() << ","
+			<< _duration << "," << _iteration << "," << _cfg.random_seed << "," << _cfg << endl;
 	}
 
 private:
@@ -274,9 +283,30 @@ private:
 			_objective = cw_obj.fbp_solver->get_objective();
 			_best_area = cw_obj.fbp_solver->get_area();
 			_best_fillratio = cw_obj.fbp_solver->get_fill_ratio();
+			int cw_height = _best_area / cw_obj.value;
+			_best_whratio = 1.0 * max(cw_obj.value, cw_height) / min(cw_obj.value, cw_height);
 			_best_wirelength = cw_obj.fbp_solver->get_wirelength();
 			_dst = cw_obj.fbp_solver->get_dst();
 		}
+	}
+
+	/// 解的合法性检查
+	bool check_dst() const {
+		DisjointRects disjoint_rects;
+		disjoint_rects.rects.reserve(_dst.size());
+		for (int i = 0; i < _dst.size(); ++i) {
+			if (min(_dst.at(i).width, _dst.at(i).height) != min(_ins.get_blocks().at(i).width, _ins.get_blocks().at(i).height) ||
+				max(_dst.at(i).width, _dst.at(i).height) != max(_ins.get_blocks().at(i).width, _ins.get_blocks().at(i).height)) {
+				fprintf(stderr, "id:%d, name:%s, has wrong width/height.\n", i, _ins.get_blocks().at(i).name.c_str());
+				return false;
+			}
+			if (!disjoint_rects.add(_dst.at(i))) { // 重叠检测
+				fprintf(stderr, "id:%d, name:%s, has overlap error.\n", i, _ins.get_blocks().at(i).name.c_str());
+				return false;
+			}
+		}
+		fprintf(stdout, "success!\n");
+		return true;
 	}
 
 private:
@@ -293,6 +323,7 @@ private:
 	double _objective;
 	int _best_area;
 	double _best_fillratio;
+	double _best_whratio;
 	double _best_wirelength;
 	vector<Rect> _dst;
 };

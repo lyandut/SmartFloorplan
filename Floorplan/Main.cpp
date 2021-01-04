@@ -57,29 +57,24 @@ void record_gsrc_init_sol() {
 }
 
 void test_floorplan_packer() {
-	double dead_ratio = 1.05;
-
 	Environment env("GSRC", "H", "n300");
 	Instance ins(env);
 	vector<Rect> src = ins.get_rects();
-	int bin_width = ceil(sqrt(dead_ratio * ins.get_total_area()));
 	default_random_engine gen(cfg.random_seed);
-
-	RandomLocalSearcher rls_solver(ins, src, bin_width, gen);
-	BeamSearcher bs_solver(ins, src, bin_width, gen);
+	double dead_ratio = 1.05;
+	int bin_width = ceil(sqrt(dead_ratio * ins.get_total_area()));
 
 	printf("Perform the packing...\n");
-	//vector<Rect> dst;
-	//int envelope_area = fbp_solver.insert_bottom_left_score(dst, Config::LevelGroupSearch::NoGroup) * bin_width;
-	//if (dst.size() != ins.get_block_num()) { printf("Failed!\n"); }
-	//else { printf("Successful! Fill Ratio: %.2f%%\n", 100.f * ins.get_total_area() / envelope_area); }
 
-	rls_solver.run(1, cfg.alpha, cfg.beta, cfg.level_fbp_wl);
-	bs_solver.run(2, cfg.alpha, cfg.beta, cfg.level_fbp_wl);
+	QAPCluster qap_cluster(ins, min(cfg.dimension, static_cast<int>(round(sqrt(ins.get_block_num())))));
 
+	RandomLocalSearcher rls_solver(ins, src, bin_width, qap_cluster._graph, gen);
+	rls_solver.run(1, cfg.alpha, cfg.beta, cfg.level_fbp_wl, cfg.level_fbp_dist);
 	if (rls_solver.get_dst().size() != ins.get_block_num()) { printf("Failed!\n"); }
 	else { printf("Successful! Fill Ratio: %.2f%%\n", rls_solver.get_fill_ratio()); }
 
+	BeamSearcher bs_solver(ins, src, bin_width, qap_cluster._graph, gen);
+	bs_solver.run(2, cfg.alpha, cfg.beta, cfg.level_fbp_wl, cfg.level_fbp_dist);
 	if (bs_solver.get_dst().size() != ins.get_block_num()) { printf("Failed!\n"); }
 	else { printf("Successful! Fill Ratio: %.2f%%\n", bs_solver.get_fill_ratio()); }
 }
@@ -91,16 +86,12 @@ void run_single_ins(const string &ins_bench, const string &ins_name) {
 	asa.draw_ins();
 	asa.record_fp(env.fp_path());
 	asa.record_fp(env.fp_path_with_time());
-	asa.draw_fp(env.fp_html_path());
-	asa.draw_fp(env.fp_html_path_with_time());
+	asa.draw_fp(env.fp_html_path(), cfg.beta);
+	asa.draw_fp(env.fp_html_path_with_time(), cfg.beta);
 	asa.record_log();
 }
 
-void run_all_ins() {
-	for (auto &ins : ins_list) {
-		run_single_ins(ins.first, ins.second);
-	}
-}
+void run_all_ins() { for_each(ins_list.begin(), ins_list.end(), [](auto &ins) { run_single_ins(ins.first, ins.second); }); }
 
 int main(int argc, char **argv) {
 
@@ -108,9 +99,9 @@ int main(int argc, char **argv) {
 
 	//test_floorplan_packer();
 
-	//run_single_ins("MCNC", "ami49");
+	run_single_ins("GSRC", "n10");
 
-	run_all_ins();
+	//run_all_ins();
 
 	system("pause");
 	return 0;

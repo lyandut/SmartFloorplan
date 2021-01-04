@@ -18,41 +18,12 @@ namespace fbp {
 			double target_objective;
 		};
 
-		/// Space定义
-		struct SkylineSpace {
-			int x;
-			int y;
-			int width;
-			int hl;
-			int hr;
-		};
-
-		SkylineSpace skyline_nodo_to_space(int skyline_index) {
-			int hl, hr;
-			if (_skyline.size() == 1) {
-				hl = hr = INF - _skyline[skyline_index].y;
-			}
-			else if (skyline_index == 0) {
-				hl = INF - _skyline[skyline_index].y;
-				hr = _skyline[skyline_index + 1].y - _skyline[skyline_index].y;
-			}
-			else if (skyline_index == _skyline.size() - 1) {
-				hl = _skyline[skyline_index - 1].y - _skyline[skyline_index].y;
-				hr = INF - _skyline[skyline_index].y;
-			}
-			else {
-				hl = _skyline[skyline_index - 1].y - _skyline[skyline_index].y;
-				hr = _skyline[skyline_index + 1].y - _skyline[skyline_index].y;
-			}
-			return { _skyline[skyline_index].x, _skyline[skyline_index].y, _skyline[skyline_index].width, hl, hr };
-		}
-
 	public:
 
 		RandomLocalSearcher() = delete;
 
-		RandomLocalSearcher(const Instance &ins, const vector<Rect> &src, int bin_width, default_random_engine &gen) :
-			FloorplanPacker(ins, src, bin_width, gen) {
+		RandomLocalSearcher(const Instance &ins, const vector<Rect> &src, int bin_width, const vector<vector<int>> &graph, default_random_engine &gen) :
+			FloorplanPacker(ins, src, bin_width, graph, gen) {
 			reset();
 			init_sort_rules();
 		}
@@ -68,7 +39,7 @@ namespace fbp {
 		void set_group_neighbors(const vector<vector<bool>> &neighbors) { _group_neighbors = neighbors; }
 
 		/// 基于_bin_width进行随机局部搜索
-		void run(int iter, double alpha, double beta, Config::LevelWireLength level_wl,
+		void run(int iter, double alpha, double beta, Config::LevelWireLength level_wl, Config::LevelObjDist level_dist,
 			Config::LevelGroupSearch level_gs = Config::LevelGroupSearch::NoGroup) {
 			// the first time to call RLS on W_k
 			if (iter == 1) {
@@ -76,16 +47,11 @@ namespace fbp {
 					_rects.assign(rule.sequence.begin(), rule.sequence.end());
 					vector<Rect> target_dst;
 					int target_area = insert_bottom_left_score(target_dst, level_gs) * _bin_width;
+					vector<bool> is_packed(_src.size(), true);
 					double dist;
-					double target_wirelength = cal_wirelength(target_dst, dist, level_wl);
+					double target_wirelength = cal_wirelength(target_dst, is_packed, dist, level_wl, level_dist);
 					rule.target_objective = cal_objective(target_area, dist, alpha, beta);
-					if (rule.target_objective < _objective) {
-						_objective = rule.target_objective;
-						_obj_area = target_area;
-						_obj_fillratio = 1.0 * _ins.get_total_area() / _obj_area;
-						_obj_wirelength = target_wirelength;
-						_dst = target_dst;
-					}
+					update_objective(rule.target_objective, target_area, target_wirelength, target_dst);
 				}
 				// 降序排列，越后面的目标函数值越小选中概率越大
 				sort(_sort_rules.begin(), _sort_rules.end(), [](auto &lhs, auto &rhs) { return lhs.target_objective > rhs.target_objective; });
@@ -101,18 +67,13 @@ namespace fbp {
 
 				vector<Rect> target_dst;
 				int target_area = insert_bottom_left_score(target_dst, level_gs) * _bin_width;
+				vector<bool> is_packed(_src.size(), true);
 				double dist;
-				double target_wirelength = cal_wirelength(target_dst, dist, level_wl);
+				double target_wirelength = cal_wirelength(target_dst, is_packed, dist, level_wl, level_dist);
 				new_rule.target_objective = cal_objective(target_area, dist, alpha, beta);
 				if (new_rule.target_objective < picked_rule.target_objective) {
 					picked_rule = new_rule;
-					if (picked_rule.target_objective < _objective) {
-						_objective = picked_rule.target_objective;
-						_obj_area = target_area;
-						_obj_fillratio = 1.0 * _ins.get_total_area() / _obj_area;
-						_obj_wirelength = target_wirelength;
-						_dst = target_dst;
-					}
+					update_objective(picked_rule.target_objective, target_area, target_wirelength, target_dst);
 				}
 			}
 			// 更新排序规则列表
@@ -137,7 +98,7 @@ namespace fbp {
 					if (best_skyline_index == 0) { _skyline[best_skyline_index].y = _skyline[best_skyline_index + 1].y; }
 					else if (best_skyline_index == _skyline.size() - 1) { _skyline[best_skyline_index].y = _skyline[best_skyline_index - 1].y; }
 					else { _skyline[best_skyline_index].y = min(_skyline[best_skyline_index - 1].y, _skyline[best_skyline_index + 1].y); }
-					merge_skylines();
+					merge_skylines(_skyline);
 					continue;
 				}
 
@@ -153,12 +114,12 @@ namespace fbp {
 					_skyline.insert(_skyline.begin() + best_skyline_index, new_skyline_node);
 					_skyline[best_skyline_index + 1].x += new_skyline_node.width;
 					_skyline[best_skyline_index + 1].width -= new_skyline_node.width;
-					merge_skylines();
+					merge_skylines(_skyline);
 				}
 				else { // 靠右
 					_skyline.insert(_skyline.begin() + best_skyline_index + 1, new_skyline_node);
 					_skyline[best_skyline_index].width -= new_skyline_node.width;
-					merge_skylines();
+					merge_skylines(_skyline);
 				}
 				skyline_height = max(skyline_height, new_skyline_node.y);
 			}
@@ -182,7 +143,7 @@ namespace fbp {
 			for (int i = 0; i < 5; ++i) { _sort_rules.push_back({ seq, numeric_limits<double>::max() }); }
 			// 1_面积递减
 			sort(_sort_rules[1].sequence.begin(), _sort_rules[1].sequence.end(), [this](int lhs, int rhs) {
-				return  _src.at(lhs).area > _src.at(rhs).area; });
+				return _ins.get_blocks().at(lhs).area > _ins.get_blocks().at(rhs).area; });
 			// 2_高度递减
 			sort(_sort_rules[2].sequence.begin(), _sort_rules[2].sequence.end(), [this](int lhs, int rhs) {
 				return _src.at(lhs).height > _src.at(rhs).height; });
@@ -205,15 +166,15 @@ namespace fbp {
 
 		/// 邻域动作1：交换两个块的顺序
 		void swap_sort_rule(SortRule &rule) {
-			size_t a = _uniform_dist(_gen);
-			size_t b = _uniform_dist(_gen);
+			int a = _uniform_dist(_gen);
+			int b = _uniform_dist(_gen);
 			while (a == b) { b = _uniform_dist(_gen); }
 			swap(rule.sequence[a], rule.sequence[b]);
 		}
 
 		/// 邻域动作2：连续多个块移动
 		void rotate_sort_rule(SortRule &rule) {
-			size_t a = _uniform_dist(_gen);
+			int a = _uniform_dist(_gen);
 			rotate(rule.sequence.begin(), rule.sequence.begin() + a, rule.sequence.end());
 		}
 
@@ -301,7 +262,7 @@ namespace fbp {
 				}
 				// 未放置的最小宽度放不下，导致浪费
 				if (min_unpacked_width > _skyline[skyline_index].width - dst[best_rect].width) {
-					SkylineSpace space = skyline_nodo_to_space(skyline_index);
+					SkylineSpace space = skyline_nodo_to_space(_skyline, skyline_index);
 					int min_space_height = min(space.hl, space.hr);
 					int new_best_rect = -1;
 					int new_best_width = 0, new_best_height;
@@ -336,7 +297,7 @@ namespace fbp {
 		bool score_rect_for_skyline_bottom_left(int skyline_index, int width, int height, int &x, int &score) {
 			if (width > _skyline[skyline_index].width) { return false; }
 
-			SkylineSpace space = skyline_nodo_to_space(skyline_index);
+			SkylineSpace space = skyline_nodo_to_space(_skyline, skyline_index);
 			if (space.hl >= space.hr) {
 				if (width == space.width && height == space.hl) { score = 7; }
 				else if (width == space.width && height == space.hr) { score = 6; }
@@ -368,59 +329,6 @@ namespace fbp {
 			if (x + width > _bin_width) { return false; }
 
 			return true;
-		}
-
-		/// 计算线长，默认引脚在中心
-		double cal_wirelength(const vector<Rect> &dst, double &dist, Config::LevelWireLength method) {
-			double total_wirelength = 0;
-			dist = 0;
-			for (auto &net : _ins.get_netlist()) {
-				double max_x = 0, min_x = numeric_limits<double>::max();
-				double max_y = 0, min_y = numeric_limits<double>::max();
-				for (int b : net.block_list) {
-					double pin_x = dst.at(b).x + dst.at(b).width * 0.5;
-					double pin_y = dst.at(b).y + dst.at(b).height * 0.5;
-					max_x = max(max_x, pin_x);
-					min_x = min(min_x, pin_x);
-					max_y = max(max_y, pin_y);
-					min_y = min(min_y, pin_y);
-				}
-				if (method == Config::LevelWireLength::BlockAndTerminal) {
-					for (int t : net.terminal_list) {
-						double pad_x = _ins.get_terminals().at(t).x_coordinate;
-						double pad_y = _ins.get_terminals().at(t).y_coordinate;
-						max_x = max(max_x, pad_x);
-						min_x = min(min_x, pad_x);
-						max_y = max(max_y, pad_y);
-						min_y = min(min_y, pad_y);
-					}
-				}
-				double hpwl = max_x - min_x + max_y - min_y;
-				total_wirelength += hpwl;
-				dist += hpwl * hpwl;
-			}
-
-			return total_wirelength;
-		}
-
-		/// 目标函数：EDAthon-2020-P4
-		double cal_objective(int area, double dist, double alpha, double beta) {
-			return (alpha * area + beta * dist) / _ins.get_total_area();
-		}
-
-		/// 合并同一level的skyline节点.
-		void merge_skylines() {
-			_skyline.erase(
-				remove_if(_skyline.begin(), _skyline.end(), [](auto &rhs) { return rhs.width <= 0; }),
-				_skyline.end()
-			);
-			for (int i = 0; i < _skyline.size() - 1; ++i) {
-				if (_skyline[i].y == _skyline[i + 1].y) {
-					_skyline[i].width += _skyline[i + 1].width;
-					_skyline.erase(_skyline.begin() + i + 1);
-					--i;
-				}
-			}
 		}
 
 	private:

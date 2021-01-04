@@ -53,8 +53,7 @@ public:
 					_blocks[i].x_coordinate,
 					_blocks[i].y_coordinate,
 					min(_blocks[i].width, _blocks[i].height),
-					max(_blocks[i].width, _blocks[i].height),
-					_blocks[i].area });
+					max(_blocks[i].width, _blocks[i].height) });
 			}
 		}
 		else {
@@ -63,8 +62,7 @@ public:
 					_blocks[i].x_coordinate,
 					_blocks[i].y_coordinate,
 					_blocks[i].width,
-					_blocks[i].height,
-					_blocks[i].area });
+					_blocks[i].height });
 			}
 		}
 		return rects;
@@ -149,12 +147,14 @@ private:
 					auto block_iter = find_if(_blocks.begin(), _blocks.end(),
 						[&tmp_name](Block &block) { return  block.name == tmp_name; });
 					if (block_iter != _blocks.end()) { // it's a block
+						block_iter->net_ids.push_back(i);
 						_nets[i].block_list.push_back(distance(_blocks.begin(), block_iter));
 					}
 					else { // it's a terminal
 						auto terminal_iter = find_if(_terminals.begin(), _terminals.end(),
 							[&tmp_name](Terminal &terminal) { return terminal.name == tmp_name; });
 						assert(terminal_iter != _terminals.end());
+						terminal_iter->net_ids.push_back(i);
 						_nets[i].terminal_list.push_back(distance(_terminals.begin(), terminal_iter));
 					}
 				}

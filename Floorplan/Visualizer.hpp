@@ -14,7 +14,7 @@ namespace utils_visualize_drawer {
 
 	class Random {
 	public:
-		using Generator = std::mt19937;
+		using Generator = mt19937;
 
 
 		Random(int seed) : rgen(seed) {}
@@ -22,7 +22,7 @@ namespace utils_visualize_drawer {
 
 
 		static int generateSeed() {
-			return static_cast<int>(std::time(nullptr) + std::clock());
+			return static_cast<int>(time(nullptr) + clock());
 		}
 
 		Generator::result_type operator()() { return rgen(); }
@@ -97,20 +97,14 @@ namespace utils_visualize_drawer {
 			rect(x, y, w, h, d, label, rc.fcolor, rc.bcolor);
 		}
 
-		void line(double x1, double y1, double x2, double y2, int layer) {
-			static vector<int> cutWidth({ 2, 8, 6 });
-			static vector<string> cutColor({ "red", "blue", "orange" });
-			x1 *= wx; y1 *= hx; x2 *= wx; y2 *= hx;
-			ofs << "      <line x1='" << x1 << "' y1='" << y1 << "' x2='" << x2 << "' y2='" << y2 << "' stroke-dasharray='12, 4' stroke='" << cutColor[layer] << "' stroke-width='" << cutWidth[layer] << "'/>" << endl << endl;
-		}
-
 		void wire(double x1, double y1, double x2, double y2) {
-			line(x1, y1, x2, y2, 0);
+			x1 *= wx; y1 *= hx; x2 *= wx; y2 *= hx;
+			ofs << "      <line x1='" << x1 << "' y1='" << y1 << "' x2='" << x2 << "' y2='" << y2 << "' style='stroke:#" << rc.bcolor << "; stroke-width:2'/>" << endl << endl;
 		}
 
 		void circle(double x, double y, double r = 2) {
 			x *= wx; y *= hx;
-			ofs << "      <circle cx='" << x << "' cy='" << y << "' r='" << r << "' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>" << std::endl;
+			ofs << "      <circle cx='" << x << "' cy='" << y << "' r='" << r << "' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>" << endl << endl;
 		}
 
 		double wx;
