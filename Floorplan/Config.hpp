@@ -28,7 +28,7 @@ struct Config {
 	unsigned int random_seed = std::random_device{}(); // 随机种子，release版本使用`random_device{}();`
 	//unsigned int random_seed = 2231403657;
 
-	double alpha = 0.8, beta = 0.2;        // 控制面积、线长优化权重
+	double alpha = 0.9, beta = 0.1;        // 控制面积、线长优化权重
 	double lb_scale = 0.8, ub_scale = 1.2; // 控制分支数目、长宽比
 
 	int ub_time = 3600; // ASA超时时间
@@ -46,7 +46,7 @@ struct Config {
 	enum LevelFloorplanPacker {
 		RandomLocalSearch,
 		BeamSearch
-	} level_asa_fbp = BeamSearch;
+	} level_asa_fbp = RandomLocalSearch;
 
 	enum LevelWireLength {
 		BlockOnly,         // 计算block内部互连线长

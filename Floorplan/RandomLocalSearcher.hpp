@@ -255,7 +255,7 @@ namespace fbp {
 				}
 			}
 			// (d)(f)(h)的退化情况
-			if (best_score == 4 || best_score == 2 || best_score == 0) {
+			if ((best_score == 4 || best_score == 2 || best_score == 0) && rects.size() > 1) {
 				int min_unpacked_width = numeric_limits<int>::max();
 				for (int r : rects) {
 					if (r != best_rect) { min_unpacked_width = min(min_unpacked_width, _src.at(r).width); }

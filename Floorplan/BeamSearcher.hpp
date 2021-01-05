@@ -30,7 +30,7 @@ namespace fbp {
 			int chosen_rect_height; // 同上
 			int chosen_rect_xcoord; // 选中矩形的x坐标（靠左/右放置）
 			int area_score; // 面积打分，max
-			int wire_score; // 线长打分，max
+			double wire_score; // 线长打分，min
 			double local_eval; // 局部评估，打分策略，max
 			double global_eval; // 全局评估，目标函数，min
 			double look_ahead_eval; // 向前看评估，目标函数，min
@@ -61,7 +61,7 @@ namespace fbp {
 						auto left_iter = nth_iter, right_iter = nth_iter;
 						while (left_iter->local_eval == nth_iter->local_eval && left_iter != children.begin()) { left_iter = prev(left_iter); }
 						while (right_iter->local_eval == nth_iter->local_eval && right_iter != children.end()) { right_iter = next(right_iter); }
-						if (left_iter != children.begin()) { ++left_iter; }
+						if (left_iter->local_eval != nth_iter->local_eval) { left_iter = next(left_iter); }
 						shuffle(left_iter, right_iter, _gen); // 同分乱序随机取
 						//shuffle(children.begin(), right_iter, _gen); // 全部乱序随机取
 						filter_children.insert(filter_children.end(), children.begin(), next(nth_iter));
@@ -181,7 +181,7 @@ namespace fbp {
 			iota(area_rank.begin(), area_rank.end(), 0);
 			iota(wire_rank.begin(), wire_rank.end(), 0);
 			sort(area_rank.begin(), area_rank.end(), [&](int lhs, int rhs) { return children[lhs].area_score < children[rhs].area_score; });
-			sort(wire_rank.begin(), wire_rank.end(), [&](int lhs, int rhs) { return children[lhs].wire_score < children[rhs].wire_score; });
+			sort(wire_rank.begin(), wire_rank.end(), [&](int lhs, int rhs) { return children[lhs].wire_score > children[rhs].wire_score; });
 			for (int i = 0; i < children.size(); ++i) {
 				children[i].local_eval =
 					alpha * distance(area_rank.begin(), find(area_rank.begin(), area_rank.end(), i)) +
@@ -395,7 +395,7 @@ namespace fbp {
 				}
 			}
 			// (d)(f)(h)的退化情况
-			if (best_score == 4 || best_score == 2 || best_score == 0) {
+			if ((best_score == 4 || best_score == 2 || best_score == 0) && parent.rects.size() > 1) {
 				int min_unpacked_width = numeric_limits<int>::max();
 				for (int r : parent.rects) {
 					if (r != rect_index) { min_unpacked_width = min(min_unpacked_width, _src.at(r).width); }

@@ -99,9 +99,9 @@ int main(int argc, char **argv) {
 
 	//test_floorplan_packer();
 
-	run_single_ins("GSRC", "n10");
+	//run_single_ins("GSRC", "n10");
 
-	//run_all_ins();
+	run_all_ins();
 
 	system("pause");
 	return 0;
