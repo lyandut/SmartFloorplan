@@ -15,12 +15,20 @@
 #include <utility>
 #include <string>
 #include <random>
+#include <unordered_map>
 
 static constexpr int INF = 0x3f3f3f3f;
 
 static std::vector<std::pair<std::string, std::string>> ins_list{
 	{"MCNC", "apte"},{"MCNC", "xerox"},{"MCNC", "hp"},{"MCNC", "ami33"},{"MCNC", "ami49"},
 	{"GSRC", "n10"},{"GSRC", "n30"},{"GSRC", "n50"},{"GSRC", "n100"},{"GSRC", "n200"},{"GSRC", "n300"}
+};
+
+static std::unordered_map<std::string, std::pair<int, int>> obj_map{
+	{"apte", {47050000, 246000}}, {"xerox", {20340000, 379600}}, {"hp", {9460000, 149800}},
+	{"ami33", {1220000, 47710}}, {"ami49", {37820000, 666250}},
+	{"n10", {225242, 25788}}, {"n30", {216051, 79740}}, {"n50", {204295, 124326}},
+	{"n100", {187880, 206269}}, {"n200", {183931, 389272}}, {"n300", {288702, 587739}}
 };
 
 /// 算法参数设置

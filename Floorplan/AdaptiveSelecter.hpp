@@ -90,7 +90,7 @@ public:
 
 			// 分组信息②：计算`boundaries`和`neighbors`
 			if (_cfg.level_rls_qapc == Config::LevelQAPCluster::On) {
-				vector<Boundary> boundaries = _cluster.cal_group_boundaries(bin_width, rls_solver->get_bin_height());
+				vector<Boundary> boundaries = _cluster.cal_group_boundaries(bin_width, rls_solver->get_skyline_height());
 				vector<vector<bool>> neighbors = _cluster.cal_group_neighbors();
 				rls_solver->set_group_boundaries(boundaries);
 				rls_solver->set_group_neighbors(neighbors);
@@ -102,8 +102,8 @@ public:
 
 		// 迭代优化 
 		while (static_cast<double>(clock() - _start) / CLOCKS_PER_SEC < _cfg.ub_time) {
-			// 疏散性：50%概率选择，50%随机选择
-			CandidateWidth &picked_width = _gen() % 3 ? cw_objs[discrete_dist(_gen)] : cw_objs[uniform_dist(_gen)];
+			// 疏散性：90%概率选择，10%随机选择
+			CandidateWidth &picked_width = _gen() % 10 ? cw_objs[discrete_dist(_gen)] : cw_objs[uniform_dist(_gen)];
 			picked_width.iter = min(2 * picked_width.iter, _cfg.ub_iter);
 			auto picked_solver = dynamic_pointer_cast<RandomLocalSearcher>(picked_width.fbp_solver);
 			picked_solver->run(picked_width.iter, _cfg.alpha, _cfg.beta, _cfg.level_fbp_wl, _cfg.level_fbp_dist, _cfg.level_rls_gs);
@@ -126,7 +126,7 @@ public:
 			return lhs.fbp_solver->get_objective() > rhs.fbp_solver->get_objective(); });
 
 		while (static_cast<double>(clock() - _start) / CLOCKS_PER_SEC < _cfg.ub_time) {
-			CandidateWidth &picked_width = _gen() % 3 ? cw_objs[discrete_dist(_gen)] : cw_objs[uniform_dist(_gen)];
+			CandidateWidth &picked_width = _gen() % 10 ? cw_objs[discrete_dist(_gen)] : cw_objs[uniform_dist(_gen)];
 			picked_width.iter = min(2 * picked_width.iter, _cfg.ub_iter);
 			auto picked_solver = dynamic_pointer_cast<BeamSearcher>(picked_width.fbp_solver);
 			picked_solver->run(picked_width.iter, _cfg.alpha, _cfg.beta, _cfg.level_fbp_wl, _cfg.level_fbp_dist);

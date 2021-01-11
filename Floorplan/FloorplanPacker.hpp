@@ -32,6 +32,10 @@ namespace fbp {
 
 		double get_wirelength() const { return _obj_wirelength; }
 
+		int get_bin_height() const { return _bin_height; }
+
+		void set_bin_height(int height) { _bin_height = height; }
+
 		virtual void run(int, double, double, Config::LevelWireLength, Config::LevelObjDist, Config::LevelGroupSearch) = 0;
 
 	protected:
@@ -160,6 +164,7 @@ namespace fbp {
 		const Instance &_ins;
 		const vector<Rect> &_src;
 		const int _bin_width;
+		int _bin_height; // 判定版本：逐渐压缩框高
 		const vector<vector<int>> &_graph; // 评估块之间连接的紧密程度
 		default_random_engine &_gen;
 

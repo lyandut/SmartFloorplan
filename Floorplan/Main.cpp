@@ -2,9 +2,8 @@
 // @author   liyan
 // @contact  lyan_dut@outlook.com
 //
+#include "Tester.hpp"
 #include "AdaptiveSelecter.hpp" 
-
-void test_qap() { qap::test_qap(); }
 
 void record_gsrc_init_sol() {
 	for (auto &gsrc : ins_list) {
@@ -95,6 +94,10 @@ void run_all_ins() { for_each(ins_list.begin(), ins_list.end(), [](auto &ins) { 
 
 int main(int argc, char **argv) {
 
+	//qap::test_qap();
+
+	//metis::test_metis();
+
 	//record_gsrc_init_sol();
 
 	//test_floorplan_packer();
@@ -103,6 +106,5 @@ int main(int argc, char **argv) {
 
 	run_all_ins();
 
-	system("pause");
 	return 0;
 }

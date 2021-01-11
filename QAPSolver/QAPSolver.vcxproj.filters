@@ -19,8 +19,5 @@
     <None Include="..\Deploy\Instance\qapdata\tai20a.dat">
       <Filter>资源文件</Filter>
     </None>
-    <None Include="..\Deploy\Instance\QAPdata\nug12.dat">
-      <Filter>资源文件</Filter>
-    </None>
   </ItemGroup>
 </Project>

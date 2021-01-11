@@ -57,6 +57,7 @@
       <Filter>Algorithm\fbp</Filter>
     </ClInclude>
     <ClInclude Include="Config.hpp" />
+    <ClInclude Include="Tester.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\Deploy\Instance\GSRC\HARD\n10.blocks">

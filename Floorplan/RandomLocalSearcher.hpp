@@ -28,8 +28,8 @@ namespace fbp {
 			init_sort_rules();
 		}
 
-		/// 排版后的高度上界，仅`Config::LevelQAPCluster::On`使用
-		int get_bin_height() const {
+		/// 排版后的高度上界，用于计算`_group_boundaries`
+		int get_skyline_height() const {
 			return max_element(_skyline.begin(), _skyline.end(),
 				[](auto &lhs, auto &rhs) { return lhs.y < rhs.y; })->y;
 		}
