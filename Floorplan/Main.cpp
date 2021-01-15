@@ -6,21 +6,21 @@
 #include "AdaptiveSelecter.hpp" 
 
 void record_gsrc_init_sol() {
-	for (auto &gsrc : ins_list) {
+	for (auto& gsrc : ins_list) {
 		if (gsrc.first == "MCNC") { continue; }
 		Environment env(gsrc.first, "H", gsrc.second);
 		Instance ins(env);
 
 		int bin_width = 0, bin_height = 0;
 		DisjointRects disjoint_rects;
-		for (auto &r : ins.get_rects(false)) {
+		for (auto& r : ins.get_rects(false)) {
 			assert(disjoint_rects.add(r));
 			bin_width = max(bin_width, r.x + r.width);
 			bin_height = max(bin_height, r.y + r.height);
 		}
 
 		double hpwl_block = 0, hpwl_terminal = 0;
-		for (auto &net : ins.get_netlist()) {
+		for (auto& net : ins.get_netlist()) {
 			double max_x = 0, min_x = numeric_limits<double>::max();
 			double max_y = 0, min_y = numeric_limits<double>::max();
 			for (int b : net.block_list) {
@@ -65,20 +65,18 @@ void test_floorplan_packer() {
 
 	printf("Perform the packing...\n");
 
+	vector<shared_ptr<FloorplanPacker>> fbp_solvers;
 	QAPCluster qap_cluster(ins, min(cfg.dimension, static_cast<int>(round(sqrt(ins.get_block_num())))));
-
-	RandomLocalSearcher rls_solver(ins, src, bin_width, qap_cluster._graph, gen);
-	rls_solver.run(1, cfg.alpha, cfg.beta, cfg.level_fbp_wl, cfg.level_fbp_dist);
-	if (rls_solver.get_dst().size() != ins.get_block_num()) { printf("Failed!\n"); }
-	else { printf("Successful! Fill Ratio: %.2f%%\n", rls_solver.get_fill_ratio()); }
-
-	BeamSearcher bs_solver(ins, src, bin_width, qap_cluster._graph, gen);
-	bs_solver.run(2, cfg.alpha, cfg.beta, cfg.level_fbp_wl, cfg.level_fbp_dist);
-	if (bs_solver.get_dst().size() != ins.get_block_num()) { printf("Failed!\n"); }
-	else { printf("Successful! Fill Ratio: %.2f%%\n", bs_solver.get_fill_ratio()); }
+	fbp_solvers.emplace_back(make_shared<RandomLocalSearcher>(ins, src, bin_width, qap_cluster._graph, gen));
+	fbp_solvers.emplace_back(make_shared<BeamSearcher>(ins, src, bin_width, qap_cluster._graph, gen));
+	for_each(fbp_solvers.begin(), fbp_solvers.end(), [&](auto& fbp_solver) {
+		fbp_solver->run(1, cfg.alpha, cfg.beta, cfg.level_fbp_wl, cfg.level_fbp_dist);
+		if (fbp_solver->get_dst().size() != ins.get_block_num()) { printf("Failed!\n"); }
+		else { printf("Successful! Fill Ratio: %.2f%%\n", fbp_solver->get_fill_ratio()); }
+	});
 }
 
-void run_single_ins(const string &ins_bench, const string &ins_name) {
+void run_single_ins(const string& ins_bench, const string& ins_name) {
 	Environment env(ins_bench, "H", ins_name);
 	AdaptiveSelecter asa(env, cfg);
 	asa.run();
@@ -90,9 +88,9 @@ void run_single_ins(const string &ins_bench, const string &ins_name) {
 	asa.record_log();
 }
 
-void run_all_ins() { for_each(ins_list.begin(), ins_list.end(), [](auto &ins) { run_single_ins(ins.first, ins.second); }); }
+void run_all_ins() { for_each(ins_list.begin(), ins_list.end(), [](auto& ins) { run_single_ins(ins.first, ins.second); }); }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
 
 	//qap::test_qap();
 

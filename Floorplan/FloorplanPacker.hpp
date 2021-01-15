@@ -19,8 +19,9 @@ namespace fbp {
 	public:
 		FloorplanPacker() = delete;
 
-		FloorplanPacker(const Instance &ins, const vector<Rect> &src, int bin_width, const vector<vector<int>> &graph, default_random_engine &gen) :
-			_ins(ins), _src(src), _bin_width(bin_width), _graph(graph), _gen(gen), _objective(numeric_limits<double>::max()) {}
+		FloorplanPacker(const Instance& ins, const vector<Rect>& src, int bin_width, const vector<vector<int>>& graph, default_random_engine& gen) :
+			_ins(ins), _src(src), _bin_width(bin_width), _bin_height(INF), _graph(graph), _gen(gen),
+			_objective(numeric_limits<double>::max()), _obj_wirelength(numeric_limits<double>::max()) {}
 
 		const vector<Rect>& get_dst() const { return _dst; }
 
@@ -36,7 +37,8 @@ namespace fbp {
 
 		void set_bin_height(int height) { _bin_height = height; }
 
-		virtual void run(int, double, double, Config::LevelWireLength, Config::LevelObjDist, Config::LevelGroupSearch) = 0;
+		virtual void run(int, double, double, Config::LevelWireLength, Config::LevelObjDist,
+			Config::LevelGroupSearch = Config::LevelGroupSearch::Off, bool = false) = 0;
 
 	protected:
 		/// 目标函数：EDAthon-2020-P4
@@ -45,32 +47,35 @@ namespace fbp {
 		}
 
 		/// 计算线长，默认引脚在中心
-		double cal_wirelength(const vector<Rect> &dst, const vector<bool> &is_packed, double &dist,
+		double cal_wirelength(const vector<Rect>& dst, const vector<bool>& is_packed, double& dist,
 			Config::LevelWireLength level_wl, Config::LevelObjDist level_dist) {
 			double total_wirelength = 0;
 			dist = 0;
 
 			vector<pair<double, double>> pins(dst.size());
+			unordered_set<int> nets;
 			for (int i = 0; i < dst.size(); ++i) {
 				if (!is_packed[i]) { continue; } // 只计算当前已放置的块
 				pins[i].first = dst[i].x + dst[i].width * 0.5;
 				pins[i].second = dst[i].y + dst[i].height * 0.5;
+				nets.insert(_ins.get_blocks().at(i).net_ids.begin(), _ins.get_blocks().at(i).net_ids.end());
 			}
+			assert(!nets.empty());
 
-			for (auto &net : _ins.get_netlist()) {
+			for (int nid : nets) {
 				double max_x = 0, min_x = numeric_limits<double>::max();
 				double max_y = 0, min_y = numeric_limits<double>::max();
-				for (int b : net.block_list) {
-					if (!is_packed[b]) { continue; }
-					max_x = max(max_x, pins[b].first);
-					min_x = min(min_x, pins[b].first);
-					max_y = max(max_y, pins[b].second);
-					min_y = min(min_y, pins[b].second);
+				for (int bid : _ins.get_netlist().at(nid).block_list) {
+					if (!is_packed[bid]) { continue; }
+					max_x = max(max_x, pins[bid].first);
+					min_x = min(min_x, pins[bid].first);
+					max_y = max(max_y, pins[bid].second);
+					min_y = min(min_y, pins[bid].second);
 				}
 				if (level_wl == Config::LevelWireLength::BlockAndTerminal) {
-					for (int t : net.terminal_list) {
-						double pad_x = _ins.get_terminals().at(t).x_coordinate;
-						double pad_y = _ins.get_terminals().at(t).y_coordinate;
+					for (int tid : _ins.get_netlist().at(nid).terminal_list) {
+						double pad_x = _ins.get_terminals().at(tid).x_coordinate;
+						double pad_y = _ins.get_terminals().at(tid).y_coordinate;
 						max_x = max(max_x, pad_x);
 						min_x = min(min_x, pad_x);
 						max_y = max(max_y, pad_y);
@@ -113,18 +118,18 @@ namespace fbp {
 		}
 
 		/// 更新最优解
-		void update_objective(double objective, int area, double wire, const vector<Rect> &dst) {
-			if (objective < _objective) {
+		void update_objective(double objective, int area, double wirelength, const vector<Rect>& dst, bool is_decision = false) {
+			if (is_decision && wirelength < _obj_wirelength || !is_decision && objective < _objective) {
 				_objective = objective;
 				_obj_area = area;
 				_obj_fillratio = 1.0 * _ins.get_total_area() / _obj_area;
-				_obj_wirelength = wire;
+				_obj_wirelength = wirelength;
 				_dst = dst;
 			}
 		}
 
 		/// 将`SkylineNode`转换成`SkylineSpace`
-		static SkylineSpace skyline_nodo_to_space(const Skyline &skyline, int skyline_index) {
+		static SkylineSpace skyline_nodo_to_space(const Skyline& skyline, int skyline_index) {
 			int hl, hr;
 			if (skyline.size() == 1) {
 				hl = hr = INF - skyline[skyline_index].y;
@@ -145,9 +150,9 @@ namespace fbp {
 		}
 
 		/// 合并同一level的skyline节点.
-		static void merge_skylines(Skyline &skyline) {
+		static void merge_skylines(Skyline& skyline) {
 			skyline.erase(
-				remove_if(skyline.begin(), skyline.end(), [](auto &rhs) { return rhs.width <= 0; }),
+				remove_if(skyline.begin(), skyline.end(), [](auto& rhs) { return rhs.width <= 0; }),
 				skyline.end()
 			);
 			for (int i = 0; i < skyline.size() - 1; ++i) {
@@ -161,12 +166,12 @@ namespace fbp {
 
 	protected:
 		// 输入
-		const Instance &_ins;
-		const vector<Rect> &_src;
+		const Instance& _ins;
+		const vector<Rect>& _src;
 		const int _bin_width;
 		int _bin_height; // 判定版本：逐渐压缩框高
-		const vector<vector<int>> &_graph; // 评估块之间连接的紧密程度
-		default_random_engine &_gen;
+		const vector<vector<int>>& _graph; // 评估块之间连接的紧密程度
+		default_random_engine& _gen;
 
 		// 优化目标
 		vector<Rect> _dst;
