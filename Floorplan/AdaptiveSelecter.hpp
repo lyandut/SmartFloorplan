@@ -10,6 +10,7 @@
 #include "QAPCluster.hpp"
 #include "RandomLocalSearcher.hpp"
 #include "BeamSearcher.hpp"
+#include "Visualizer.hpp"
 
 using namespace qapc;
 using namespace fbp;
@@ -27,10 +28,11 @@ public:
 
 	AdaptiveSelecter() = delete;
 
-	AdaptiveSelecter(const Environment& env, const Config& cfg) :
-		_env(env), _cfg(cfg), _ins(_env), _gen(_cfg.random_seed), _start(clock()),
-		_cluster(_ins, min(_cfg.dimension, static_cast<int>(round(sqrt(_ins.get_block_num()))))),
-		_objective(numeric_limits<double>::max()), _best_wirelength(numeric_limits<double>::max()) {}
+	AdaptiveSelecter(const Environment& env, const Config& cfg) : _env(env), _cfg(cfg),
+		_ins(_env), _cluster(_ins, min(_cfg.dimension, static_cast<int>(round(sqrt(_ins.get_block_num()))))),
+		_gen(_cfg.random_seed), _start(clock()), _duration(0), _iteration(0),
+		_best_area(numeric_limits<int>::max()), _best_wirelength(numeric_limits<double>::max()),
+		_best_objective(numeric_limits<double>::max()), _best_fillratio(0), _best_whratio(0), _dst() {}
 
 	void run() {
 		vector<Rect> src = _ins.get_rects();
@@ -167,7 +169,7 @@ public:
 	}
 
 	void draw_fp(string html_path, bool draw_wire = false) const {
-		utils_visualize_drawer::Drawer html_drawer(html_path, _ins.get_fixed_width() * 2, _ins.get_fixed_height() * 2);
+		visualizer::Drawer html_drawer(html_path, _ins.get_fixed_width() * 2, _ins.get_fixed_height() * 2);
 		for (auto& r : _dst) { html_drawer.rect(r.x, r.y, r.width, r.height); }
 		for (auto& t : _ins.get_terminals()) { html_drawer.circle(t.x_coordinate, t.y_coordinate); }
 		if (draw_wire) {
@@ -188,9 +190,9 @@ public:
 	}
 
 	void draw_ins() const {
-		ifstream ifs(_env.ins_html_path());
+		ifstream ifs(_env.pl_html_path());
 		if (ifs.good()) { return; }
-		utils_visualize_drawer::Drawer html_drawer(_env.ins_html_path(), _ins.get_fixed_width(), _ins.get_fixed_height());
+		visualizer::Drawer html_drawer(_env.pl_html_path(), _ins.get_fixed_width(), _ins.get_fixed_height());
 		for (auto& r : _ins.get_blocks()) { html_drawer.rect(r.x_coordinate, r.y_coordinate, r.width, r.height); }
 		for (auto& t : _ins.get_terminals()) { html_drawer.circle(t.x_coordinate, t.y_coordinate); }
 	}
@@ -208,7 +210,7 @@ public:
 		}
 		log_file << _env._ins_name << ","
 			<< _cfg.alpha << "," << _best_area << "," << _best_fillratio << "," << _best_whratio << ","
-			<< _cfg.beta << "," << _best_wirelength << "," << _objective << "," << check_dst() << ","
+			<< _cfg.beta << "," << _best_wirelength << "," << _best_objective << "," << check_dst() << ","
 			<< _duration << "," << _iteration << "," << _cfg.random_seed << "," << _cfg << endl;
 	}
 
@@ -297,10 +299,10 @@ private:
 	/// 更新历史最优解
 	bool update_objective(const CandidateWidth& cw_obj, bool is_decision = false) {
 		if (is_decision && cw_obj.fbp_solver->get_wirelength() < _best_wirelength ||
-			!is_decision && cw_obj.fbp_solver->get_objective() < _objective) {
+			!is_decision && cw_obj.fbp_solver->get_objective() < _best_objective) {
 			_duration = static_cast<double>(clock() - _start) / CLOCKS_PER_SEC;
 			_iteration = cw_obj.iter;
-			_objective = cw_obj.fbp_solver->get_objective();
+			_best_objective = cw_obj.fbp_solver->get_objective();
 			_best_area = cw_obj.fbp_solver->get_area();
 			_best_fillratio = cw_obj.fbp_solver->get_fill_ratio();
 			int cw_height = _best_area / cw_obj.value;
@@ -354,10 +356,10 @@ private:
 	double _duration;
 	int _iteration;
 
-	double _objective;
 	int _best_area;
+	double _best_wirelength;
+	double _best_objective;
 	double _best_fillratio;
 	double _best_whratio;
-	double _best_wirelength;
 	vector<Rect> _dst;
 };

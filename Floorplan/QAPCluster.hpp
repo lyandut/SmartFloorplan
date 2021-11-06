@@ -6,8 +6,8 @@
 
 #include <cmath>
 #include <metis.h>
-#include "../QAPSolver/QAPSolver.hpp"
 
+#include "QAPSolver.hpp"
 #include "Config.hpp"
 #include "Instance.hpp"
 
@@ -78,7 +78,7 @@ namespace qapc {
 
 		/// 计算qap分组
 		void cal_qap_sol(const vector<vector<int>> &flow_matrix, const vector<vector<int>> &distance_matrix) {
-			qap::run_qap(flow_matrix, distance_matrix, qap_sol);
+			qap::run(flow_matrix, distance_matrix, qap_sol);
 		}
 
 		/// 计算分组邻居信息

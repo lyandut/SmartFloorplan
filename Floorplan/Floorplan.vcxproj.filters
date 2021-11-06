@@ -1,10 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="资源文件">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
-    </Filter>
     <Filter Include="Data">
       <UniqueIdentifier>{ca37a24e-0e0e-419a-a0b4-c75eb74900b2}</UniqueIdentifier>
     </Filter>
@@ -15,14 +11,27 @@
     <Filter Include="Utils">
       <UniqueIdentifier>{f767a38a-d169-485b-8c10-457c65a60750}</UniqueIdentifier>
     </Filter>
-    <Filter Include="资源文件\GSRC">
-      <UniqueIdentifier>{7c769cf0-d568-43e5-ba55-3839136aa9d9}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="资源文件\MCNC">
-      <UniqueIdentifier>{a4ead705-59a1-4258-9d5f-568d4bdbddf4}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Algorithm\fbp">
       <UniqueIdentifier>{6ccc6402-0ab8-4c17-90b2-ee217658fa9e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Algorithm\qap">
+      <UniqueIdentifier>{d4359f1e-3fd9-4d9a-b69a-b2225234c869}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Instance">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Instance\GSRC">
+      <UniqueIdentifier>{7c769cf0-d568-43e5-ba55-3839136aa9d9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Instance\MCNC">
+      <UniqueIdentifier>{a4ead705-59a1-4258-9d5f-568d4bdbddf4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Instance\METIS">
+      <UniqueIdentifier>{bb19e0cb-ac61-47a9-be76-3f2af30e9141}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Instance\QAP">
+      <UniqueIdentifier>{09d33d28-635d-4546-bf9b-059f748ee676}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -41,9 +50,6 @@
     <ClInclude Include="Data.hpp">
       <Filter>Data</Filter>
     </ClInclude>
-    <ClInclude Include="QAPCluster.hpp">
-      <Filter>Algorithm</Filter>
-    </ClInclude>
     <ClInclude Include="AdaptiveSelecter.hpp">
       <Filter>Algorithm</Filter>
     </ClInclude>
@@ -57,107 +63,124 @@
       <Filter>Algorithm\fbp</Filter>
     </ClInclude>
     <ClInclude Include="Config.hpp" />
+    <ClInclude Include="QAPCluster.hpp">
+      <Filter>Algorithm\qap</Filter>
+    </ClInclude>
+    <ClInclude Include="QAPSolver.hpp">
+      <Filter>Algorithm\qap</Filter>
+    </ClInclude>
     <ClInclude Include="Tester.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\Deploy\Instance\GSRC\HARD\n10.blocks">
-      <Filter>资源文件\GSRC</Filter>
+      <Filter>Instance\GSRC</Filter>
     </None>
     <None Include="..\Deploy\Instance\GSRC\HARD\n10.nets">
-      <Filter>资源文件\GSRC</Filter>
+      <Filter>Instance\GSRC</Filter>
     </None>
     <None Include="..\Deploy\Instance\GSRC\HARD\n10.pl">
-      <Filter>资源文件\GSRC</Filter>
+      <Filter>Instance\GSRC</Filter>
     </None>
     <None Include="..\Deploy\Instance\GSRC\HARD\n30.blocks">
-      <Filter>资源文件\GSRC</Filter>
+      <Filter>Instance\GSRC</Filter>
     </None>
     <None Include="..\Deploy\Instance\GSRC\HARD\n30.nets">
-      <Filter>资源文件\GSRC</Filter>
+      <Filter>Instance\GSRC</Filter>
     </None>
     <None Include="..\Deploy\Instance\GSRC\HARD\n30.pl">
-      <Filter>资源文件\GSRC</Filter>
+      <Filter>Instance\GSRC</Filter>
     </None>
     <None Include="..\Deploy\Instance\GSRC\HARD\n50.blocks">
-      <Filter>资源文件\GSRC</Filter>
+      <Filter>Instance\GSRC</Filter>
     </None>
     <None Include="..\Deploy\Instance\GSRC\HARD\n50.nets">
-      <Filter>资源文件\GSRC</Filter>
+      <Filter>Instance\GSRC</Filter>
     </None>
     <None Include="..\Deploy\Instance\GSRC\HARD\n50.pl">
-      <Filter>资源文件\GSRC</Filter>
+      <Filter>Instance\GSRC</Filter>
     </None>
     <None Include="..\Deploy\Instance\GSRC\HARD\n100.blocks">
-      <Filter>资源文件\GSRC</Filter>
+      <Filter>Instance\GSRC</Filter>
     </None>
     <None Include="..\Deploy\Instance\GSRC\HARD\n100.nets">
-      <Filter>资源文件\GSRC</Filter>
+      <Filter>Instance\GSRC</Filter>
     </None>
     <None Include="..\Deploy\Instance\GSRC\HARD\n100.pl">
-      <Filter>资源文件\GSRC</Filter>
+      <Filter>Instance\GSRC</Filter>
     </None>
     <None Include="..\Deploy\Instance\GSRC\HARD\n200.blocks">
-      <Filter>资源文件\GSRC</Filter>
+      <Filter>Instance\GSRC</Filter>
     </None>
     <None Include="..\Deploy\Instance\GSRC\HARD\n200.nets">
-      <Filter>资源文件\GSRC</Filter>
+      <Filter>Instance\GSRC</Filter>
     </None>
     <None Include="..\Deploy\Instance\GSRC\HARD\n200.pl">
-      <Filter>资源文件\GSRC</Filter>
+      <Filter>Instance\GSRC</Filter>
     </None>
     <None Include="..\Deploy\Instance\GSRC\HARD\n300.blocks">
-      <Filter>资源文件\GSRC</Filter>
+      <Filter>Instance\GSRC</Filter>
     </None>
     <None Include="..\Deploy\Instance\GSRC\HARD\n300.nets">
-      <Filter>资源文件\GSRC</Filter>
+      <Filter>Instance\GSRC</Filter>
     </None>
     <None Include="..\Deploy\Instance\GSRC\HARD\n300.pl">
-      <Filter>资源文件\GSRC</Filter>
+      <Filter>Instance\GSRC</Filter>
     </None>
     <None Include="..\Deploy\Instance\MCNC\HARD\ami33.blocks">
-      <Filter>资源文件\MCNC</Filter>
+      <Filter>Instance\MCNC</Filter>
     </None>
     <None Include="..\Deploy\Instance\MCNC\HARD\ami33.nets">
-      <Filter>资源文件\MCNC</Filter>
+      <Filter>Instance\MCNC</Filter>
     </None>
     <None Include="..\Deploy\Instance\MCNC\HARD\ami33.pl">
-      <Filter>资源文件\MCNC</Filter>
+      <Filter>Instance\MCNC</Filter>
     </None>
     <None Include="..\Deploy\Instance\MCNC\HARD\ami49.blocks">
-      <Filter>资源文件\MCNC</Filter>
+      <Filter>Instance\MCNC</Filter>
     </None>
     <None Include="..\Deploy\Instance\MCNC\HARD\ami49.nets">
-      <Filter>资源文件\MCNC</Filter>
+      <Filter>Instance\MCNC</Filter>
     </None>
     <None Include="..\Deploy\Instance\MCNC\HARD\ami49.pl">
-      <Filter>资源文件\MCNC</Filter>
+      <Filter>Instance\MCNC</Filter>
     </None>
     <None Include="..\Deploy\Instance\MCNC\HARD\apte.blocks">
-      <Filter>资源文件\MCNC</Filter>
+      <Filter>Instance\MCNC</Filter>
     </None>
     <None Include="..\Deploy\Instance\MCNC\HARD\apte.nets">
-      <Filter>资源文件\MCNC</Filter>
+      <Filter>Instance\MCNC</Filter>
     </None>
     <None Include="..\Deploy\Instance\MCNC\HARD\apte.pl">
-      <Filter>资源文件\MCNC</Filter>
+      <Filter>Instance\MCNC</Filter>
     </None>
     <None Include="..\Deploy\Instance\MCNC\HARD\hp.blocks">
-      <Filter>资源文件\MCNC</Filter>
+      <Filter>Instance\MCNC</Filter>
     </None>
     <None Include="..\Deploy\Instance\MCNC\HARD\hp.nets">
-      <Filter>资源文件\MCNC</Filter>
+      <Filter>Instance\MCNC</Filter>
     </None>
     <None Include="..\Deploy\Instance\MCNC\HARD\hp.pl">
-      <Filter>资源文件\MCNC</Filter>
+      <Filter>Instance\MCNC</Filter>
     </None>
     <None Include="..\Deploy\Instance\MCNC\HARD\xerox.blocks">
-      <Filter>资源文件\MCNC</Filter>
+      <Filter>Instance\MCNC</Filter>
     </None>
     <None Include="..\Deploy\Instance\MCNC\HARD\xerox.nets">
-      <Filter>资源文件\MCNC</Filter>
+      <Filter>Instance\MCNC</Filter>
     </None>
     <None Include="..\Deploy\Instance\MCNC\HARD\xerox.pl">
-      <Filter>资源文件\MCNC</Filter>
+      <Filter>Instance\MCNC</Filter>
     </None>
+    <None Include="..\Deploy\Instance\QAP\tai20a.dat">
+      <Filter>Instance\QAP</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="..\Deploy\Instance\METIS\graph_a.txt">
+      <Filter>Instance\METIS</Filter>
+    </Text>
+    <Text Include="..\Deploy\Instance\METIS\graph_b.txt">
+      <Filter>Instance\METIS</Filter>
+    </Text>
   </ItemGroup>
 </Project>

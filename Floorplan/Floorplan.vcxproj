@@ -184,6 +184,7 @@
       <SubType>
       </SubType>
     </ClInclude>
+    <ClInclude Include="QAPSolver.hpp" />
     <ClInclude Include="RandomLocalSearcher.hpp">
       <SubType>
       </SubType>
@@ -237,11 +238,11 @@
     <None Include="..\Deploy\Instance\MCNC\HARD\xerox.blocks" />
     <None Include="..\Deploy\Instance\MCNC\HARD\xerox.nets" />
     <None Include="..\Deploy\Instance\MCNC\HARD\xerox.pl" />
+    <None Include="..\Deploy\Instance\QAP\tai20a.dat" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\QAPSolver\QAPSolver.vcxproj">
-      <Project>{017c77b8-d3e7-436b-87b5-3a58c9bc3392}</Project>
-    </ProjectReference>
+    <Text Include="..\Deploy\Instance\METIS\graph_a.txt" />
+    <Text Include="..\Deploy\Instance\METIS\graph_b.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

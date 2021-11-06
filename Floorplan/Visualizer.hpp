@@ -8,7 +8,7 @@
 #include <fstream>
 #include <random>
 
-namespace utils_visualize_drawer {
+namespace visualizer {
 
 	using namespace std;
 

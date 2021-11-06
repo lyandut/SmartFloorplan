@@ -1,0 +1,252 @@
+UCSC blocks 1.0
+# Created      : Fri Dec 08 19:24:08 PST 2000
+# User         : huaizhi@shawnee
+# Platform     : SunOS 5.8 sparc
+
+NumSoftRectangularBlocks : 30
+NumHardRectilinearBlocks : 0
+NumTerminals : 212
+
+sb0 softrectangular 12402 0.300 3.000
+sb1 softrectangular 1980 0.300 3.000
+sb2 softrectangular 5586 0.300 3.000
+sb3 softrectangular 10452 0.300 3.000
+sb4 softrectangular 6952 0.300 3.000
+sb5 softrectangular 3811 0.300 3.000
+sb6 softrectangular 4836 0.300 3.000
+sb7 softrectangular 8532 0.300 3.000
+sb8 softrectangular 8128 0.300 3.000
+sb9 softrectangular 12096 0.300 3.000
+sb10 softrectangular 3115 0.300 3.000
+sb11 softrectangular 3848 0.300 3.000
+sb12 softrectangular 7980 0.300 3.000
+sb13 softrectangular 3968 0.300 3.000
+sb14 softrectangular 9492 0.300 3.000
+sb15 softrectangular 4368 0.300 3.000
+sb16 softrectangular 9246 0.300 3.000
+sb17 softrectangular 9372 0.300 3.000
+sb18 softrectangular 4452 0.300 3.000
+sb19 softrectangular 12360 0.300 3.000
+sb20 softrectangular 17018 0.300 3.000
+sb21 softrectangular 4410 0.300 3.000
+sb22 softrectangular 7209 0.300 3.000
+sb23 softrectangular 6500 0.300 3.000
+sb24 softrectangular 5292 0.300 3.000
+sb25 softrectangular 4130 0.300 3.000
+sb26 softrectangular 8710 0.300 3.000
+sb27 softrectangular 1221 0.300 3.000
+sb28 softrectangular 8875 0.300 3.000
+sb29 softrectangular 2250 0.300 3.000
+
+p1 terminal
+p2 terminal
+p3 terminal
+p4 terminal
+p5 terminal
+p6 terminal
+p7 terminal
+p8 terminal
+p9 terminal
+p10 terminal
+p11 terminal
+p12 terminal
+p13 terminal
+p14 terminal
+p15 terminal
+p16 terminal
+p17 terminal
+p18 terminal
+p19 terminal
+p20 terminal
+p21 terminal
+p22 terminal
+p23 terminal
+p24 terminal
+p25 terminal
+p26 terminal
+p27 terminal
+p28 terminal
+p29 terminal
+p30 terminal
+p31 terminal
+p32 terminal
+p33 terminal
+p34 terminal
+p35 terminal
+p36 terminal
+p37 terminal
+p38 terminal
+p39 terminal
+p40 terminal
+p41 terminal
+p42 terminal
+p43 terminal
+p44 terminal
+p45 terminal
+p46 terminal
+p47 terminal
+p48 terminal
+p49 terminal
+p50 terminal
+p51 terminal
+p52 terminal
+p53 terminal
+p54 terminal
+p55 terminal
+p56 terminal
+p57 terminal
+p58 terminal
+p59 terminal
+p60 terminal
+p61 terminal
+p62 terminal
+p63 terminal
+p64 terminal
+p65 terminal
+p66 terminal
+p67 terminal
+p68 terminal
+p69 terminal
+p70 terminal
+p71 terminal
+p72 terminal
+p73 terminal
+p74 terminal
+p75 terminal
+p76 terminal
+p77 terminal
+p78 terminal
+p79 terminal
+p80 terminal
+p81 terminal
+p82 terminal
+p83 terminal
+p84 terminal
+p85 terminal
+p86 terminal
+p87 terminal
+p88 terminal
+p89 terminal
+p90 terminal
+p91 terminal
+p92 terminal
+p93 terminal
+p94 terminal
+p95 terminal
+p96 terminal
+p97 terminal
+p98 terminal
+p99 terminal
+p100 terminal
+p101 terminal
+p102 terminal
+p103 terminal
+p104 terminal
+p105 terminal
+p106 terminal
+p107 terminal
+p108 terminal
+p109 terminal
+p110 terminal
+p111 terminal
+p112 terminal
+p113 terminal
+p114 terminal
+p115 terminal
+p116 terminal
+p117 terminal
+p118 terminal
+p119 terminal
+p120 terminal
+p121 terminal
+p122 terminal
+p123 terminal
+p124 terminal
+p125 terminal
+p126 terminal
+p127 terminal
+p128 terminal
+p129 terminal
+p130 terminal
+p131 terminal
+p132 terminal
+p133 terminal
+p134 terminal
+p135 terminal
+p136 terminal
+p137 terminal
+p138 terminal
+p139 terminal
+p140 terminal
+p141 terminal
+p142 terminal
+p143 terminal
+p144 terminal
+p145 terminal
+p146 terminal
+p147 terminal
+p148 terminal
+p149 terminal
+p150 terminal
+p151 terminal
+p152 terminal
+p153 terminal
+p154 terminal
+p155 terminal
+p156 terminal
+p157 terminal
+p158 terminal
+p159 terminal
+p160 terminal
+p161 terminal
+p162 terminal
+p163 terminal
+p164 terminal
+p165 terminal
+p166 terminal
+p167 terminal
+p168 terminal
+p169 terminal
+p170 terminal
+p171 terminal
+p172 terminal
+p173 terminal
+p174 terminal
+p175 terminal
+p176 terminal
+p177 terminal
+p178 terminal
+p179 terminal
+p180 terminal
+p181 terminal
+p182 terminal
+p183 terminal
+p184 terminal
+p185 terminal
+p186 terminal
+p187 terminal
+p188 terminal
+p189 terminal
+p190 terminal
+p191 terminal
+p192 terminal
+p193 terminal
+p194 terminal
+p195 terminal
+p196 terminal
+p197 terminal
+p198 terminal
+p199 terminal
+p200 terminal
+p201 terminal
+p202 terminal
+p203 terminal
+p204 terminal
+p205 terminal
+p206 terminal
+p207 terminal
+p208 terminal
+p209 terminal
+p210 terminal
+p211 terminal
+p212 terminal

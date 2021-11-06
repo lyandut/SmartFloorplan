@@ -13,6 +13,7 @@
 // Any use of this implementation or a modification of the code
 // must acknowledge the work of U. Benlic and J.K. Hao
 /****************************************************************/
+#pragma once
 
 #include <iostream>
 #include <fstream>
@@ -349,47 +350,6 @@ void generate_random_solution(long n, type_vector  & p)
   for (i = 1; i <  n; i = i+1) transpose(p[i], p[i + rand()%(n-i+1)]);
 }
 
-void load_problem( int &n, type_matrix &a, type_matrix &b, long & best_objective)
-{
-	cin >> best_objective >> n; 
-	a = new long* [n+1];
-	b = new long* [n+1];
-	for (int i = 1; i <= n; i = i+1) 
-	{
-		a[i] = new long[n+1];
-		b[i] = new long[n+1];
-	}
-
-	for (int i = 1; i <= n; i = i+1) 
-		for (int j = 1; j <= n; j = j+1)
-			cin >> a[i][j];
-	for (int i = 1; i <= n; i = i+1) 
-		for (int j = 1; j <= n; j = j+1)
-			cin >> b[i][j];
-}
-void load_problem_from_datfile(int &n, type_matrix &a, type_matrix &b, long & best_objective)
-{
-	ifstream ifs("Instance/qapdata/tai20a.dat");
-	if (!ifs.is_open()) { return; }
-	
-	best_objective = 703482;
-	ifs >> n;
-	a = new long*[n + 1];
-	b = new long*[n + 1];
-	for (int i = 1; i <= n; i = i+1)
-	{
-		a[i] = new long[n + 1];
-		b[i] = new long[n + 1];
-	}
-
-	for (int i = 1; i <= n; i = i+1)
-		for (int j = 1; j <= n; j = j+1)
-			ifs >> a[i][j];
-	for (int i = 1; i <= n; i = i+1)
-		for (int j = 1; j <= n; j = j+1)
-			ifs >> b[i][j];
-}
-
 int n;                    // problem size
 type_matrix a, b;         // flows and distances matrices
 type_vector solution;     // solution (permutation) 
@@ -413,21 +373,7 @@ void run_bls(int &n, type_matrix &a, type_matrix &b, long &best_objective) {
 	//cout << "Solution detail "; for (int i = 1; i <= n; i = i + 1) { cout << solution[i] << " "; } cout << endl;
 }
 
-void test_qap() {
-    //load_problem(n, a, b, best_objective);
-	load_problem_from_datfile(n, a, b, best_objective);
-	
-	run_bls(n, a, b, best_objective);
-	
-	delete[] solution;
-	for (int i = 1; i <= n; i = i + 1) {
-		delete[] a[i];
-		delete[] b[i];
-	}
-	delete[] a; delete[] b;
-}
-
-void run_qap(const vector<vector<int>> &flow_matrix, const vector<vector<int>> &distance_matrix, vector<int> &sol) {
+bool run(const vector<vector<int>> &flow_matrix, const vector<vector<int>> &distance_matrix, vector<int> &sol) {
 	// load_problem_from_vector
 	best_objective = 0;
 	n = flow_matrix.size();
@@ -449,6 +395,12 @@ void run_qap(const vector<vector<int>> &flow_matrix, const vector<vector<int>> &
 	sol.clear(); sol.reserve(n);
 	for (int i = 1; i <= n; i = i + 1) { sol.push_back(solution[i]); }
 
+	// check cost
+	int check_cost = 0;
+	for (int i = 0; i < n; ++i)
+		for (int j = 0; j < n; ++j)
+			check_cost += flow_matrix[i][j] * distance_matrix[sol[i] - 1][sol[j] - 1];
+
 	delete[] solution;
 	for (int i = 1; i <= n; i = i + 1) {
 		delete[] a[i];
@@ -456,12 +408,7 @@ void run_qap(const vector<vector<int>> &flow_matrix, const vector<vector<int>> &
 	}
 	delete[] a; delete[] b;
 
-	// check cost
-	//int check_cost = 0;
-	//for (int i = 0; i < n; ++i)
-	//	for (int j = 0; j < n; ++j)
-	//		check_cost += flow_matrix[i][j] * distance_matrix[sol[i] - 1][sol[j] - 1];
-	//cout << (cost == check_cost) << endl;
+	return check_cost == cost;
 }
 
 }

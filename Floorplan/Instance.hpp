@@ -20,7 +20,7 @@ public:
 	string blocks_path() const { return instance_dir() + benchmark_dir() + type_dir() + _ins_name + ".blocks"; }
 	string nets_path() const { return instance_dir() + benchmark_dir() + type_dir() + _ins_name + ".nets"; }
 	string pl_path() const { return instance_dir() + benchmark_dir() + type_dir() + _ins_name + ".pl"; }
-	string ins_html_path() const { return instance_dir() + benchmark_dir() + type_dir() + _ins_name + ".html"; }
+	string pl_html_path() const { return instance_dir() + benchmark_dir() + type_dir() + _ins_name + ".html"; }
 	string fp_path() const { return solution_dir() + benchmark_dir() + _ins_name + ".fp"; }
 	string fp_path_with_time() const { return solution_dir() + benchmark_dir() + _ins_name + "." + utils::Date::to_long_str() + ".fp"; }
 	string fp_html_path() const { return solution_dir() + benchmark_dir() + _ins_name + ".html"; }

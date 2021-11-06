@@ -8,7 +8,6 @@
 #include <sstream>
 #include <iomanip>
 
-#include "Visualizer.hpp"
 
 namespace utils {
 
