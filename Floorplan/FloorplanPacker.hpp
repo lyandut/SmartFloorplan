@@ -19,9 +19,22 @@ namespace fbp {
 	public:
 		FloorplanPacker() = delete;
 
-		FloorplanPacker(const Instance& ins, const vector<Rect>& src, int bin_width, const vector<vector<int>>& graph, default_random_engine& gen) :
-			_ins(ins), _src(src), _bin_width(bin_width), _bin_height(INF), _graph(graph), _gen(gen),
-			_objective(numeric_limits<double>::max()), _obj_wirelength(numeric_limits<double>::max()) {}
+		FloorplanPacker(const Instance& ins, const vector<Rect>& src, int bin_width, default_random_engine& gen) :
+			_ins(ins), _src(src), _bin_width(bin_width), _bin_height(INF),
+			_graph(ins.get_block_num(), vector<int>(ins.get_block_num(), 0)),
+			_gen(gen), _dst(), _objective(numeric_limits<double>::max()),
+			_obj_area(numeric_limits<int>::max()), _obj_wirelength(numeric_limits<double>::max()) {
+			for (auto& net : _ins.get_netlist()) {
+				for (int i = 0; i < net.block_list.size(); ++i) {
+					for (int j = i + 1; j < net.block_list.size(); ++j) {
+						int a = net.block_list[i];
+						int b = net.block_list[j];
+						_graph[a][b] += 1;
+						_graph[b][a] += 1;
+					}
+				}
+			}
+		}
 
 		const vector<Rect>& get_dst() const { return _dst; }
 
@@ -29,19 +42,16 @@ namespace fbp {
 
 		int get_area() const { return _obj_area; }
 
-		double get_fill_ratio() const { return _obj_fillratio; }
-
 		double get_wirelength() const { return _obj_wirelength; }
 
 		int get_bin_height() const { return _bin_height; }
 
 		void set_bin_height(int height) { _bin_height = height; }
 
-		virtual void run(int, double, double, Config::LevelWireLength, Config::LevelObjDist,
-			Config::LevelGroupSearch = Config::LevelGroupSearch::Off, bool = false) = 0;
+		virtual void run(int, double, double, Config::LevelWireLength, Config::LevelObjDist) = 0;
 
 	protected:
-		/// 目标函数：EDAthon-2020-P4
+		/// 目标函数
 		double cal_objective(int area, double dist, double alpha, double beta) {
 			return (alpha * area + beta * dist) / _ins.get_total_area();
 		}
@@ -94,7 +104,7 @@ namespace fbp {
 						if (is_packed[i] && is_packed[j] && _graph[i][j]) {
 							double dx = pins[i].first - pins[j].first;
 							double dy = pins[i].second - pins[j].second;
-							dist += dx * dx + dy * dy; // ② 两两矩形之间的欧氏距离平方和：dx^2+dy^2
+							dist += dx * dx + dy * dy; // ② 两两矩形之间的欧氏平方距离：dx^2+dy^2
 						}
 					}
 				}
@@ -105,7 +115,7 @@ namespace fbp {
 						if (is_packed[i] && is_packed[j] && _graph[i][j]) {
 							double dx = abs(pins[i].first - pins[j].first);
 							double dy = abs(pins[i].second - pins[j].second);
-							dist += (dx + dy) * (dx + dy); // ③ 两两矩形之间的曼哈顿距离平方和：(dx+dy)^2
+							dist += (dx + dy) * (dx + dy); // ③ 两两矩形之间的曼哈顿平方距离：(dx+dy)^2
 						}
 					}
 				}
@@ -118,11 +128,10 @@ namespace fbp {
 		}
 
 		/// 更新最优解
-		void update_objective(double objective, int area, double wirelength, const vector<Rect>& dst, bool is_decision = false) {
-			if (is_decision && wirelength < _obj_wirelength || !is_decision && objective < _objective) {
+		void update_objective(double objective, int area, double wirelength, const vector<Rect>& dst) {
+			if (_objective > objective) {
 				_objective = objective;
 				_obj_area = area;
-				_obj_fillratio = 1.0 * _ins.get_total_area() / _obj_area;
 				_obj_wirelength = wirelength;
 				_dst = dst;
 			}
@@ -169,15 +178,14 @@ namespace fbp {
 		const Instance& _ins;
 		const vector<Rect>& _src;
 		const int _bin_width;
-		int _bin_height; // 判定版本：逐渐压缩框高
-		const vector<vector<int>>& _graph; // 评估块之间连接的紧密程度
+		int _bin_height; // 非const，超出_bin_height提前剪枝
+		vector<vector<int>> _graph; // 结合net_list还原出图，评估块之间连接的紧密程度
 		default_random_engine& _gen;
 
 		// 优化目标
 		vector<Rect> _dst;
 		double _objective;
 		int _obj_area;
-		double _obj_fillratio;
 		double _obj_wirelength;
 	};
 

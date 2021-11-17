@@ -22,38 +22,29 @@ namespace fbp {
 
 		RandomLocalSearcher() = delete;
 
-		RandomLocalSearcher(const Instance& ins, const vector<Rect>& src, int bin_width, const vector<vector<int>>& graph, default_random_engine& gen) :
-			FloorplanPacker(ins, src, bin_width, graph, gen) {
+		RandomLocalSearcher(const Instance& ins, const vector<Rect>& src, int bin_width, default_random_engine& gen) :
+			FloorplanPacker(ins, src, bin_width, gen) {
 			reset();
 			init_sort_rules();
 		}
 
-		/// 排版后的高度上界，用于计算`_group_boundaries`
-		int get_skyline_height() const {
-			return max_element(_skyline.begin(), _skyline.end(),
-				[](auto& lhs, auto& rhs) { return lhs.y < rhs.y; })->y;
-		}
-
-		void set_group_boundaries(const vector<Boundary>& boundaries) { _group_boundaries = boundaries; }
-
-		void set_group_neighbors(const vector<vector<bool>>& neighbors) { _group_neighbors = neighbors; }
-
 		/// 基于_bin_width进行随机局部搜索
-		void run(int iter, double alpha, double beta, Config::LevelWireLength level_wl, Config::LevelObjDist level_dist, Config::LevelGroupSearch level_gs, bool) {
+		void run(int iter, double alpha, double beta, Config::LevelWireLength level_wl, Config::LevelObjDist level_dist) {
 			// the first time to call RLS on W_k
 			if (iter == 1) {
 				for (auto& rule : _sort_rules) {
 					_rects.assign(rule.sequence.begin(), rule.sequence.end());
 					vector<Rect> target_dst;
-					int target_area = insert_bottom_left_score(target_dst, level_gs) * _bin_width;
 					vector<bool> is_packed(_src.size(), true);
-					double dist;
-					double target_wirelength = cal_wirelength(target_dst, is_packed, dist, level_wl, level_dist);
-					rule.target_objective = cal_objective(target_area, dist, alpha, beta);
+					int target_area = insert_bottom_left_score(target_dst) * _bin_width;
+					double target_dist;
+					double target_wirelength = cal_wirelength(target_dst, is_packed, target_dist, level_wl, level_dist);
+					rule.target_objective = cal_objective(target_area, target_dist, alpha, beta);
 					update_objective(rule.target_objective, target_area, target_wirelength, target_dst);
 				}
 				// 降序排列，越后面的目标函数值越小选中概率越大
-				sort(_sort_rules.begin(), _sort_rules.end(), [](auto& lhs, auto& rhs) { return lhs.target_objective > rhs.target_objective; });
+				sort(_sort_rules.begin(), _sort_rules.end(), [](auto& lhs, auto& rhs) {
+					return lhs.target_objective > rhs.target_objective; });
 			}
 
 			// 迭代优化
@@ -64,13 +55,12 @@ namespace fbp {
 				if (iter % 4) { swap_sort_rule(new_rule); }
 				else { rotate_sort_rule(new_rule); }
 				_rects.assign(new_rule.sequence.begin(), new_rule.sequence.end());
-
 				vector<Rect> target_dst;
-				int target_area = insert_bottom_left_score(target_dst, level_gs) * _bin_width;
 				vector<bool> is_packed(_src.size(), true);
-				double dist;
-				double target_wirelength = cal_wirelength(target_dst, is_packed, dist, level_wl, level_dist);
-				new_rule.target_objective = cal_objective(target_area, dist, alpha, beta);
+				int target_area = insert_bottom_left_score(target_dst) * _bin_width;
+				double target_dist;
+				double target_wirelength = cal_wirelength(target_dst, is_packed, target_dist, level_wl, level_dist);
+				new_rule.target_objective = cal_objective(target_area, target_dist, alpha, beta);
 				if (new_rule.target_objective <= picked_rule.target_objective) {
 					picked_rule = new_rule;
 					is_resort_needed = true;
@@ -85,7 +75,7 @@ namespace fbp {
 		}
 
 		/// 基于最下最左和打分策略，贪心构造一个完整解
-		int insert_bottom_left_score(vector<Rect>& dst, Config::LevelGroupSearch method) {
+		int insert_bottom_left_score(vector<Rect>& dst) {
 			int skyline_height = 0;
 			reset();
 			dst = _src;
@@ -94,8 +84,7 @@ namespace fbp {
 				auto bottom_skyline_iter = min_element(_skyline.begin(), _skyline.end(),
 					[](auto& lhs, auto& rhs) { return lhs.y < rhs.y; });
 				int best_skyline_index = distance(_skyline.begin(), bottom_skyline_iter);
-				list<int> candidate_rects = get_candidate_rects(best_skyline_index, method);
-				int min_rect_width = _src.at(*min_element(candidate_rects.begin(), candidate_rects.end(),
+				int min_rect_width = _src.at(*min_element(_rects.begin(), _rects.end(),
 					[this](int lhs, int rhs) { return _src.at(lhs).width < _src.at(rhs).width; })).width;
 
 				if (_skyline[best_skyline_index].width < min_rect_width) { // 最小宽度矩形放不进去，需要填坑
@@ -106,14 +95,14 @@ namespace fbp {
 					continue;
 				}
 
-				int best_rect_index = find_rect_for_skyline_bottom_left(best_skyline_index, candidate_rects, dst);
+				int best_rect_index = find_rect_for_skyline_bottom_left(best_skyline_index, dst);
 				assert(best_rect_index != -1);
 
 				// 从未放置列表中删除
 				_rects.remove(best_rect_index);
 
 				// 更新skyline
-				SkylineNode new_skyline_node{ dst[best_rect_index].x, dst[best_rect_index].y + dst[best_rect_index].height, dst[best_rect_index].width };
+				SkylineNode new_skyline_node = { dst[best_rect_index].x, dst[best_rect_index].y + dst[best_rect_index].height, dst[best_rect_index].width };
 				if (new_skyline_node.x == _skyline[best_skyline_index].x) { // 靠左
 					_skyline.insert(_skyline.begin() + best_skyline_index, new_skyline_node);
 					_skyline[best_skyline_index + 1].x += new_skyline_node.width;
@@ -182,66 +171,10 @@ namespace fbp {
 			rotate(rule.sequence.begin(), rule.sequence.begin() + a, rule.sequence.end());
 		}
 
-		/// 基于分组策略挑选候选矩形，减小搜索规模
-		list<int> get_candidate_rects(int skyline_index, Config::LevelGroupSearch method) {
-			if (method == Config::LevelGroupSearch::Off) { return _rects; }
-
-			int gid = 0;
-			for (; gid < _group_boundaries.size(); ++gid) {
-				if (_skyline[skyline_index].x >= _group_boundaries[gid].x
-					&& _skyline[skyline_index].y >= _group_boundaries[gid].y
-					&& _skyline[skyline_index].x < _group_boundaries[gid].x + _group_boundaries[gid].width
-					&& _skyline[skyline_index].y < _group_boundaries[gid].y + _group_boundaries[gid].height) {
-					break;
-				}
-			}
-			if (gid == _group_boundaries.size()) { // 超出上边界，从后往前只检查x范围即可
-				--gid;
-				for (; gid >= 0; --gid) {
-					if (_skyline[skyline_index].x >= _group_boundaries[gid].x
-						&& _skyline[skyline_index].y >= _group_boundaries[gid].y
-						&& _skyline[skyline_index].x < _group_boundaries[gid].x + _group_boundaries[gid].width) {
-						break;
-					}
-				}
-			}
-			list<int> candidate_rects;
-			switch (method) {
-			case Config::LevelGroupSearch::NeighborNone:
-				for (int r : _rects) { // 必须顺序遍历_rects才能使sort_rule生效
-					if (_src.at(r).gid == gid)
-						candidate_rects.push_back(r);
-				}
-				break;
-			case Config::LevelGroupSearch::NeighborAll:
-				for (int r : _rects) {
-					if (_src.at(r).gid == gid)
-						candidate_rects.push_back(r);
-					else if (_group_neighbors[_src.at(r).gid][gid])
-						candidate_rects.push_back(r);
-				}
-				break;
-			case Config::LevelGroupSearch::NeighborPartial:
-				for (int r : _rects) {
-					if (_src.at(r).gid == gid)
-						candidate_rects.push_back(r);
-					else if (_group_neighbors[_src.at(r).gid][gid] && _src.at(r).gid < gid)
-						candidate_rects.push_back(r);
-				}
-				break;
-			default:
-				assert(false);
-				break;
-			}
-			// 如果没有符合策略的矩形，则返回所有矩形
-			if (candidate_rects.empty()) { return _rects; }
-			return candidate_rects;
-		}
-
-		/// 基于左下和打分策略
-		int find_rect_for_skyline_bottom_left(int skyline_index, const list<int>& rects, vector<Rect>& dst) {
+		/// 基于打分策略为左下角选一个块
+		int find_rect_for_skyline_bottom_left(int skyline_index, vector<Rect>& dst) {
 			int best_rect = -1, best_score = -1;
-			for (int r : rects) {
+			for (int r : _rects) {
 				int width = _src.at(r).width, height = _src.at(r).height;
 				int x, score;
 				for (int rotate = 0; rotate <= 1; ++rotate) {
@@ -259,9 +192,9 @@ namespace fbp {
 				}
 			}
 			// (d)(f)(h)的退化情况
-			if ((best_score == 4 || best_score == 2 || best_score == 0) && rects.size() > 1) {
+			if ((best_score == 4 || best_score == 2 || best_score == 0) && _rects.size() > 1) {
 				int min_unpacked_width = numeric_limits<int>::max();
-				for (int r : rects) {
+				for (int r : _rects) {
 					if (r != best_rect) { min_unpacked_width = min(min_unpacked_width, _src.at(r).width); }
 				}
 				// 未放置的最小宽度放不下，导致浪费
@@ -270,7 +203,7 @@ namespace fbp {
 					int min_space_height = min(space.hl, space.hr);
 					int new_best_rect = -1;
 					int new_best_width = 0, new_best_height;
-					for (int r : rects) {
+					for (int r : _rects) {
 						for (int rotate = 0; rotate <= 1; ++rotate) {
 							int width = _src.at(r).width, height = _src.at(r).height;
 							if (rotate) { swap(width, height); }
@@ -285,11 +218,12 @@ namespace fbp {
 					}
 					if (new_best_rect != -1) {
 						best_rect = new_best_rect;
-						dst[best_rect].x = space.hl >= space.hr ? _skyline[skyline_index].x : // 靠左
-							_skyline[skyline_index].x + _skyline[skyline_index].width - new_best_width; // 靠右
-						dst[best_rect].y = _skyline[skyline_index].y;
 						dst[best_rect].width = new_best_width;
 						dst[best_rect].height = new_best_height;
+						dst[best_rect].y = _skyline[skyline_index].y;
+						dst[best_rect].x = space.hl >= space.hr ? // 必须靠高的一侧放
+							_skyline[skyline_index].x : // 靠左
+							_skyline[skyline_index].x + _skyline[skyline_index].width - new_best_width; // 靠右
 					}
 				}
 			}
@@ -343,10 +277,6 @@ namespace fbp {
 		list<int> _rects; // SortRule的sequence，相当于指针，使用list快速删除，放置完毕为空
 		discrete_distribution<> _discrete_dist;   // 离散概率分布，用于挑选规则(即挑选sequence赋给_rects)
 		uniform_int_distribution<> _uniform_dist; // 均匀分布，用于交换矩形顺序
-
-		// 分组信息，用于`get_candidate_rects()`挑选候选矩形
-		vector<Boundary> _group_boundaries;    // `_group_boundaries[i]`   分组_i的边界
-		vector<vector<bool>> _group_neighbors; // `_group_neighbors[i][j]` 分组_i和_j是否为邻居
 	};
 
 }

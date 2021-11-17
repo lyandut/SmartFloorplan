@@ -14,9 +14,6 @@
     <Filter Include="Algorithm\fbp">
       <UniqueIdentifier>{6ccc6402-0ab8-4c17-90b2-ee217658fa9e}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Algorithm\qap">
-      <UniqueIdentifier>{d4359f1e-3fd9-4d9a-b69a-b2225234c869}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Instance">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
@@ -26,12 +23,6 @@
     </Filter>
     <Filter Include="Instance\MCNC">
       <UniqueIdentifier>{a4ead705-59a1-4258-9d5f-568d4bdbddf4}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Instance\METIS">
-      <UniqueIdentifier>{bb19e0cb-ac61-47a9-be76-3f2af30e9141}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Instance\QAP">
-      <UniqueIdentifier>{09d33d28-635d-4546-bf9b-059f748ee676}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -63,13 +54,6 @@
       <Filter>Algorithm\fbp</Filter>
     </ClInclude>
     <ClInclude Include="Config.hpp" />
-    <ClInclude Include="QAPCluster.hpp">
-      <Filter>Algorithm\qap</Filter>
-    </ClInclude>
-    <ClInclude Include="QAPSolver.hpp">
-      <Filter>Algorithm\qap</Filter>
-    </ClInclude>
-    <ClInclude Include="Tester.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\Deploy\Instance\GSRC\HARD\n10.blocks">
@@ -171,16 +155,5 @@
     <None Include="..\Deploy\Instance\MCNC\HARD\xerox.pl">
       <Filter>Instance\MCNC</Filter>
     </None>
-    <None Include="..\Deploy\Instance\QAP\tai20a.dat">
-      <Filter>Instance\QAP</Filter>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <Text Include="..\Deploy\Instance\METIS\graph_a.txt">
-      <Filter>Instance\METIS</Filter>
-    </Text>
-    <Text Include="..\Deploy\Instance\METIS\graph_b.txt">
-      <Filter>Instance\METIS</Filter>
-    </Text>
   </ItemGroup>
 </Project>

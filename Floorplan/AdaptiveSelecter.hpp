@@ -7,12 +7,10 @@
 #include <memory>
 #include <unordered_set>
 
-#include "QAPCluster.hpp"
 #include "RandomLocalSearcher.hpp"
 #include "BeamSearcher.hpp"
 #include "Visualizer.hpp"
 
-using namespace qapc;
 using namespace fbp;
 
 class AdaptiveSelecter {
@@ -20,7 +18,7 @@ class AdaptiveSelecter {
 	/// 候选宽度定义
 	struct CandidateWidth {
 		int value;
-		int iter;
+		int iter; // rls：交换次数，bs：束宽度
 		shared_ptr<FloorplanPacker> fbp_solver;
 	};
 
@@ -28,9 +26,8 @@ public:
 
 	AdaptiveSelecter() = delete;
 
-	AdaptiveSelecter(const Environment& env, const Config& cfg) : _env(env), _cfg(cfg),
-		_ins(_env), _cluster(_ins, min(_cfg.dimension, static_cast<int>(round(sqrt(_ins.get_block_num()))))),
-		_gen(_cfg.random_seed), _start(clock()), _duration(0), _iteration(0),
+	AdaptiveSelecter(const Environment& env, const Config& cfg) :
+		_env(env), _cfg(cfg), _ins(env), _gen(_cfg.random_seed), _start(clock()), _duration(0), _iteration(0),
 		_best_area(numeric_limits<int>::max()), _best_wirelength(numeric_limits<double>::max()),
 		_best_objective(numeric_limits<double>::max()), _best_fillratio(0), _best_whratio(0), _dst() {}
 
@@ -40,17 +37,17 @@ public:
 		// Calculate the set of candidate widths W
 		vector<int> candidate_widths;
 		switch (_cfg.level_asa_cw) {
-		case Config::LevelCandidateWidth::Interval:
-			candidate_widths = cal_candidate_widths_on_interval(src);
-			break;
-		case Config::LevelCandidateWidth::Sqrt:
-			candidate_widths = cal_candidate_widths_on_sqrt(src);
-			break;
 		case Config::LevelCandidateWidth::CombRotate:
 			candidate_widths = cal_candidate_widths_on_combrotate(src);
 			break;
 		case Config::LevelCandidateWidth::CombShort:
 			candidate_widths = cal_candidate_widths_on_combshort(src);
+			break;
+		case Config::LevelCandidateWidth::Interval:
+			candidate_widths = cal_candidate_widths_on_interval(src);
+			break;
+		case Config::LevelCandidateWidth::Sqrt:
+			candidate_widths = cal_candidate_widths_on_sqrt(src);
 			break;
 		default: assert(false); break;
 		}
@@ -64,13 +61,10 @@ public:
 
 		switch (_cfg.level_asa_fbp) {
 		case Config::LevelFloorplanPacker::RandomLocalSearch:
-			random_local_search(src, candidate_widths, discrete_dist, uniform_dist);
+			search<RandomLocalSearcher>(src, candidate_widths, discrete_dist, uniform_dist);
 			break;
 		case Config::LevelFloorplanPacker::BeamSearch:
-			beam_search(src, candidate_widths, discrete_dist, uniform_dist, false);
-			break;
-		case Config::LevelFloorplanPacker::DecisionSearch:
-			beam_search(src, candidate_widths, discrete_dist, uniform_dist, true);
+			search<BeamSearcher>(src, candidate_widths, discrete_dist, uniform_dist);
 			break;
 		default:
 			assert(false);
@@ -78,82 +72,32 @@ public:
 		}
 	}
 
-	void random_local_search(vector<Rect>& src, vector<int>& candidate_widths,
-		discrete_distribution<>& discrete_dist, uniform_int_distribution<>& uniform_dist) {
-		// 分组信息①：分配`gid`
-		if (_cfg.level_rls_qapc == Config::LevelQAPCluster::On) {
-			_cluster.cal_qap_sol(
-				_cluster.cal_flow_matrix(_cfg.level_qapc_flow),
-				_cluster.cal_distance_matrix(_cfg.level_qapc_dist)
-			);
-			for (auto& rect : src) { rect.gid = _cluster.qap_sol.at(_cluster.part.at(rect.id)) - 1; }
-		}
-		else { assert(_cfg.level_rls_gs == Config::LevelGroupSearch::Off); }
-
-		_start = clock(); // 不计算qap调用时间
-
-		// 分支初始化iter=1
+	template<typename T>
+	void search(vector<Rect>& src, vector<int>& candidate_widths, discrete_distribution<>& discrete_dist, uniform_int_distribution<>& uniform_dist) {
+		// 初始化iter=1
 		vector<CandidateWidth> cw_objs; cw_objs.reserve(candidate_widths.size());
 		for (int bin_width : candidate_widths) {
-			cw_objs.push_back({ bin_width, 1, make_shared<RandomLocalSearcher>(_ins, src, bin_width, _cluster._graph, _gen) });
-			cw_objs.back().fbp_solver->run(1, _cfg.alpha, _cfg.beta, _cfg.level_fbp_wl, _cfg.level_fbp_dist, Config::LevelGroupSearch::Off);
+			cw_objs.push_back({ bin_width, 1, make_shared<T>(_ins, src, bin_width, _gen) });
+			cw_objs.back().fbp_solver->set_bin_height(ceil(1.0 * obj_map.at(_env._ins_name).first / bin_width)); // 仅用于beam_search提前剪枝
+			cw_objs.back().fbp_solver->run(1, _cfg.alpha, _cfg.beta, _cfg.level_fbp_wl, _cfg.level_fbp_dist);
 			update_objective(cw_objs.back());
-
-			// 分组信息②：计算`boundaries`和`neighbors`
-			if (_cfg.level_rls_qapc == Config::LevelQAPCluster::On) {
-				auto rls_solver = dynamic_pointer_cast<RandomLocalSearcher>(cw_objs.back().fbp_solver);
-				vector<Boundary> boundaries = _cluster.cal_group_boundaries(bin_width, rls_solver->get_skyline_height());
-				vector<vector<bool>> neighbors = _cluster.cal_group_neighbors();
-				rls_solver->set_group_boundaries(boundaries);
-				rls_solver->set_group_neighbors(neighbors);
-			}
 		}
-		// 降序排列，越后面的选中概率越大
+		// 降序排列，越后面的质量越好选中概率越大
 		sort(cw_objs.begin(), cw_objs.end(), [](auto& lhs, auto& rhs) {
 			return lhs.fbp_solver->get_objective() > rhs.fbp_solver->get_objective(); });
-
-		// 迭代优化 
-		while (static_cast<double>(clock() - _start) / CLOCKS_PER_SEC < _cfg.ub_time &&
-			(_best_area > obj_map.at(_env._ins_name).first || _best_wirelength > obj_map.at(_env._ins_name).second)) {
-			// 疏散性：90%概率选择，10%随机选择
-			CandidateWidth& picked_width = _gen() % 10 ? cw_objs[discrete_dist(_gen)] : cw_objs[uniform_dist(_gen)];
+		// 迭代优化
+		while ((obj_map.at(_env._ins_name).first < _best_area || obj_map.at(_env._ins_name).second < _best_wirelength) &&
+			static_cast<double>(clock() - _start) / CLOCKS_PER_SEC < _cfg.ub_time) {
+			CandidateWidth& picked_width = _gen() % 10 ? cw_objs[discrete_dist(_gen)] : cw_objs[uniform_dist(_gen)]; // 疏散性：90%概率选择，10%随机选择
 			double old_objective = picked_width.fbp_solver->get_objective();
 			picked_width.iter = min(2 * picked_width.iter, _cfg.ub_iter);
-			picked_width.fbp_solver->run(picked_width.iter, _cfg.alpha, _cfg.beta, _cfg.level_fbp_wl, _cfg.level_fbp_dist, _cfg.level_rls_gs);
+			picked_width.fbp_solver->run(picked_width.iter, _cfg.alpha, _cfg.beta, _cfg.level_fbp_wl, _cfg.level_fbp_dist);
 			update_objective(picked_width);
-			resort_candwidths(cw_objs, picked_width, old_objective);
-		}
-	}
-
-	void beam_search(vector<Rect>& src, vector<int>& candidate_widths,
-		discrete_distribution<>& discrete_dist, uniform_int_distribution<>& uniform_dist, bool is_decision) {
-		vector<CandidateWidth> cw_objs; cw_objs.reserve(candidate_widths.size());
-		for (int bin_width : candidate_widths) {
-			cw_objs.push_back({ bin_width, 1, make_shared<BeamSearcher>(_ins, src, bin_width, _cluster._graph, _gen) });
-			cw_objs.back().fbp_solver->run(1, _cfg.alpha, _cfg.beta, _cfg.level_fbp_wl, _cfg.level_fbp_dist, Config::LevelGroupSearch::Off, is_decision);
-			bool is_updated = update_objective(cw_objs.back(), is_decision);
-			// 判定 ==> 逐步压缩框高
-			if (is_updated && is_decision) { cw_objs.back().fbp_solver->set_bin_height(ceil(1.0 * _best_area / cw_objs.back().value) - 1); }
-		}
-		if (is_decision) { // 判定 ==> obj=wire
-			sort(cw_objs.begin(), cw_objs.end(), [](auto& lhs, auto& rhs) {
-				return lhs.fbp_solver->get_wirelength() < rhs.fbp_solver->get_wirelength(); });
-		}
-		else { // 优化 ==> obj=area+wire
-			sort(cw_objs.begin(), cw_objs.end(), [](auto& lhs, auto& rhs) {
-				return lhs.fbp_solver->get_objective() > rhs.fbp_solver->get_objective(); });
-		}
-
-		while (static_cast<double>(clock() - _start) / CLOCKS_PER_SEC < _cfg.ub_time &&
-			(_best_area > obj_map.at(_env._ins_name).first || _best_wirelength > obj_map.at(_env._ins_name).second)) {
-			CandidateWidth& picked_width = _gen() % 10 ? cw_objs[discrete_dist(_gen)] : cw_objs[uniform_dist(_gen)];
-			double old_value = is_decision ? picked_width.fbp_solver->get_wirelength() : picked_width.fbp_solver->get_objective();
-			picked_width.iter = min(2 * picked_width.iter, _cfg.ub_iter);
-			picked_width.fbp_solver->run(picked_width.iter, _cfg.alpha, _cfg.beta, _cfg.level_fbp_wl, _cfg.level_fbp_dist, Config::LevelGroupSearch::Off, is_decision);
-			bool is_updated = update_objective(picked_width, is_decision);
-			// 判定 ==> 逐步压缩框高
-			if (is_updated && is_decision) { picked_width.fbp_solver->set_bin_height(ceil(1.0 * _best_area / picked_width.value) - 1); }
-			resort_candwidths(cw_objs, picked_width, old_value, is_decision);
+			// 重新排序
+			if (picked_width.fbp_solver->get_objective() < old_objective) {
+				sort(cw_objs.begin(), cw_objs.end(), [](auto& lhs, auto& rhs) {
+					return lhs.fbp_solver->get_objective() > rhs.fbp_solver->get_objective(); });
+			}
 		}
 	}
 
@@ -205,8 +149,7 @@ public:
 				"Alpha,Area,FillRatio,WHRatio,"
 				"Beta,WireLength,Objective,CheckObj,"
 				"Duration,Iteration,RandomSeed,"
-				"LevelFloorplanPacker,LevelWireLength,LevelObjDist,LevelQAPCluster,"
-				"LevelGroupSearch,LevelGraphConnect,LevelFlow,LevelDist" << endl;
+				"LevelFloorplanPacker,LevelWireLength,LevelObjDist" << endl;
 		}
 		log_file << _env._ins_name << ","
 			<< _cfg.alpha << "," << _best_area << "," << _best_fillratio << "," << _best_whratio << ","
@@ -296,33 +239,19 @@ private:
 		return candidate_widths;
 	}
 
-	/// 更新历史最优解
-	bool update_objective(const CandidateWidth& cw_obj, bool is_decision = false) {
-		if (is_decision && cw_obj.fbp_solver->get_wirelength() < _best_wirelength ||
-			!is_decision && cw_obj.fbp_solver->get_objective() < _best_objective) {
+	/// 更新历史最优解，ps：这里的更新条件区别于 FloorplanPacker::update_objective()
+	/// area<best_area && wire<best_wire ==> obj<best_obj，反之则不能覆盖
+	void update_objective(const CandidateWidth& cw_obj) {
+		if (cw_obj.fbp_solver->get_area() < _best_area && cw_obj.fbp_solver->get_wirelength() < _best_wirelength) {
 			_duration = static_cast<double>(clock() - _start) / CLOCKS_PER_SEC;
 			_iteration = cw_obj.iter;
 			_best_objective = cw_obj.fbp_solver->get_objective();
 			_best_area = cw_obj.fbp_solver->get_area();
-			_best_fillratio = cw_obj.fbp_solver->get_fill_ratio();
+			_best_wirelength = cw_obj.fbp_solver->get_wirelength();
+			_best_fillratio = 1.0 * _ins.get_total_area() / _best_area;
 			int cw_height = _best_area / cw_obj.value;
 			_best_whratio = 1.0 * max(cw_obj.value, cw_height) / min(cw_obj.value, cw_height);
-			_best_wirelength = cw_obj.fbp_solver->get_wirelength();
 			_dst = cw_obj.fbp_solver->get_dst();
-			return true;
-		}
-		return false;
-	}
-
-	/// 候选宽度重新排序
-	void resort_candwidths(vector<CandidateWidth>& cw_objs, const CandidateWidth& cw_obj, double old_value, bool is_decision = false) {
-		if (is_decision && cw_obj.fbp_solver->get_wirelength() < old_value) {
-			sort(cw_objs.begin(), cw_objs.end(), [](auto& lhs, auto& rhs) {
-				return lhs.fbp_solver->get_wirelength() > rhs.fbp_solver->get_wirelength(); });
-		}
-		if (!is_decision && cw_obj.fbp_solver->get_objective() < old_value) {
-			sort(cw_objs.begin(), cw_objs.end(), [](auto& lhs, auto& rhs) {
-				return lhs.fbp_solver->get_objective() > rhs.fbp_solver->get_objective(); });
 		}
 	}
 
@@ -350,7 +279,6 @@ private:
 	const Config& _cfg;
 
 	Instance _ins;
-	QAPCluster _cluster;
 	default_random_engine _gen;
 	clock_t _start;
 	double _duration;
