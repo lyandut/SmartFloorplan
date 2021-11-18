@@ -62,7 +62,7 @@ struct Config {
 		SqrHpwlDist,          // 整个网表半周长的平方
 		SqrEuclideanDist,     // 矩形对之间欧式平方距离
 		SqrManhattanDist      // 矩形对之间曼哈顿平方距离
-	} level_fbp_dist = LevelObjDist::SqrManhattanDist;
+	} level_fbp_dist = LevelObjDist::SqrHpwlDist;
 } cfg;
 
 std::ostream& operator<<(std::ostream& os, const Config& cfg) {

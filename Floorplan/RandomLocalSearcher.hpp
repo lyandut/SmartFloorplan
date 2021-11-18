@@ -195,7 +195,8 @@ namespace fbp {
 			if ((best_score == 4 || best_score == 2 || best_score == 0) && _rects.size() > 1) {
 				int min_unpacked_width = numeric_limits<int>::max();
 				for (int r : _rects) {
-					if (r != best_rect) { min_unpacked_width = min(min_unpacked_width, _src.at(r).width); }
+					if (r == best_rect) { continue; }
+					min_unpacked_width = min(min_unpacked_width, _src.at(r).width);
 				}
 				// 未放置的最小宽度放不下，导致浪费
 				if (min_unpacked_width > _skyline[skyline_index].width - dst[best_rect].width) {

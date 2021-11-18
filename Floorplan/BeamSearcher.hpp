@@ -30,7 +30,7 @@ namespace fbp {
 			int chosen_rect_height; // 旋转之后的高度
 			int chosen_rect_xcoord; // 选中矩形的x坐标（靠左/右放置）
 			int area_score; // 面积打分，max
-			double wire_score; // 线长打分，max
+			double wire_score; // 线长打分，min
 			double local_eval; // 局部评估，排名打分，min
 			double global_eval; // 全局评估，目标函数，min
 			double lookahead_eval; // 向前看评估，目标函数，min
@@ -44,7 +44,7 @@ namespace fbp {
 
 		void run(int beam_width, double alpha, double beta, Config::LevelWireLength level_wl, Config::LevelObjDist level_dist) {
 			reset_beam_tree();
-			int filter_width = beam_width * beam_width;
+			int filter_width = beam_width * 2;
 			while (!_beam_tree.front().rects.empty()) {
 				vector<BranchNode> filter_children; filter_children.reserve(_beam_tree.size() * _beam_tree.front().rects.size() * 2);
 				int nth_filter_width = filter_width / _beam_tree.size();
@@ -64,23 +64,24 @@ namespace fbp {
 				}
 
 				vector<BranchNode> beam_children; beam_children.reserve(filter_children.size());
-				if (beam_width == 1) { // `beam_width==1`只使用全局评估
+				if (filter_children.size() > beam_width) {
 					global_evaluation(filter_children, alpha, beta, false, level_wl, level_dist);
-					beam_children.push_back(*min_element(filter_children.begin(), filter_children.end(),
-						[](auto& lhs, auto& rhs) { return lhs.global_eval < rhs.global_eval; }));
-				}
-				else if (filter_children.size() > beam_width) {
-					int nth_beam_width = beam_width / 2;
-					// 2.全局评估：从`filter_children`中选出`nth_beam_width`个
-					global_evaluation(filter_children, alpha, beta, false, level_wl, level_dist);
-					nth_element(filter_children.begin(), filter_children.begin() + nth_beam_width - 1, filter_children.end(),
-						[](auto& lhs, auto& rhs) { return lhs.global_eval < rhs.global_eval; });
-					beam_children.insert(beam_children.end(), filter_children.begin(), filter_children.begin() + nth_beam_width);
-					// 3.向先前看评估：从剩余`filter_children`中选出`nth_beam_width`个
-					global_evaluation(filter_children, alpha, beta, true, level_wl, level_dist);
-					nth_element(filter_children.begin() + nth_beam_width, filter_children.begin() + beam_width - 1, filter_children.end(),
-						[](auto& lhs, auto& rhs) { return lhs.lookahead_eval < rhs.lookahead_eval; });
-					beam_children.insert(beam_children.end(), filter_children.begin() + nth_beam_width, filter_children.begin() + beam_width);
+					if (beam_width == 1) { // `beam_width==1`选全局评估最好的
+						beam_children.push_back(*min_element(filter_children.begin(), filter_children.end(),
+							[](auto& lhs, auto& rhs) { return lhs.global_eval < rhs.global_eval; }));
+					}
+					else {
+						int nth_beam_width = beam_width / 2;
+						global_evaluation(filter_children, alpha, beta, true, level_wl, level_dist);
+						// 2.全局评估：从`filter_children`中选出`nth_beam_width`个
+						nth_element(filter_children.begin(), filter_children.begin() + nth_beam_width - 1, filter_children.end(),
+							[](auto& lhs, auto& rhs) { return lhs.global_eval < rhs.global_eval; });
+						beam_children.insert(beam_children.end(), filter_children.begin(), filter_children.begin() + nth_beam_width);
+						// 3.向先前看评估：从剩余`filter_children`中选出`nth_beam_width`个
+						nth_element(filter_children.begin() + nth_beam_width, filter_children.begin() + beam_width - 1, filter_children.end(),
+							[](auto& lhs, auto& rhs) { return lhs.lookahead_eval < rhs.lookahead_eval; });
+						beam_children.insert(beam_children.end(), filter_children.begin() + nth_beam_width, filter_children.begin() + beam_width);
+					}
 				}
 				else { // 不足`beam_width`个则全选中
 					beam_children.insert(beam_children.end(), filter_children.begin(), filter_children.end());
@@ -110,7 +111,7 @@ namespace fbp {
 			root.netwire.resize(_ins.get_net_num());
 			for_each(root.netwire.begin(), root.netwire.end(), [](auto& netwire_node) {
 				netwire_node.max_x = netwire_node.max_y = 0;
-				netwire_node.min_x = netwire_node.min_y = numeric_limits<double>::max();
+				netwire_node.min_x = netwire_node.min_y = INF;
 				netwire_node.hpwl = 0.0;
 			});
 			root.skyline.clear();
@@ -174,7 +175,7 @@ namespace fbp {
 			iota(area_rank.begin(), area_rank.end(), 0);
 			iota(wire_rank.begin(), wire_rank.end(), 0);
 			sort(area_rank.begin(), area_rank.end(), [&](int lhs, int rhs) { return children[lhs].area_score > children[rhs].area_score; });
-			sort(wire_rank.begin(), wire_rank.end(), [&](int lhs, int rhs) { return children[lhs].wire_score > children[rhs].wire_score; });
+			sort(wire_rank.begin(), wire_rank.end(), [&](int lhs, int rhs) { return children[lhs].wire_score < children[rhs].wire_score; });
 			for (int i = 0; i < children.size(); ++i) {
 				int area_score = distance(area_rank.begin(), find(area_rank.begin(), area_rank.end(), i));
 				int wire_socre = distance(wire_rank.begin(), find(wire_rank.begin(), wire_rank.end(), i));
@@ -244,7 +245,7 @@ namespace fbp {
 			return true;
 		}
 
-		/// 线长打分策略，平均线长取负，与socre_area统一趋势
+		/// 线长打分策略，连线长度/连线数目
 		double score_wire(const BranchNode& node, Config::LevelObjDist level_dist) {
 			double avg_length;
 			double pin_x = node.chosen_rect_xcoord + node.chosen_rect_width * 0.5;
@@ -264,7 +265,7 @@ namespace fbp {
 						net_length += hpwl - node.parent->netwire[nid].hpwl;
 					}
 				}
-				avg_length = net_length / net_num;
+				avg_length = net_num ? net_length / net_num : INF;
 			}
 			else {
 				utils::LevelDist method = level_dist == Config::LevelObjDist::SqrEuclideanDist ?
@@ -280,10 +281,10 @@ namespace fbp {
 							node.parent->dst[i].y + node.parent->dst[i].height * 0.5);
 					}
 				}
-				avg_length = wire_length / wire_num;
+				avg_length = wire_num ? wire_length / wire_num : INF;
 			}
 
-			return -avg_length;
+			return avg_length;
 		}
 
 		/// 在当前局部解的基础上，贪心构造一个完整/局部解
@@ -330,7 +331,8 @@ namespace fbp {
 			if ((best_score == 4 || best_score == 2 || best_score == 0) && parent.rects.size() > 1) {
 				int min_unpacked_width = numeric_limits<int>::max();
 				for (int r : parent.rects) {
-					if (r != rect_index) { min_unpacked_width = min(min_unpacked_width, _src.at(r).width); }
+					if (r == rect_index) { continue; }
+					min_unpacked_width = min(min_unpacked_width, _src.at(r).width);
 				}
 				// 未放置的最小宽度放不下，导致浪费
 				if (min_unpacked_width > parent.skyline[parent.bl_index].width - rect_width) {
