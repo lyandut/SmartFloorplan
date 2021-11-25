@@ -102,7 +102,7 @@ int main(int argc, char** argv) {
 
 	//test::test_floorplan_packer();
 
-	//run_single_ins("GSRC", "n10");
+	//run_single_ins("MCNC", "hp");
 
 	run_all_ins();
 

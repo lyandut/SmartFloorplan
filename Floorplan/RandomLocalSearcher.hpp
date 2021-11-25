@@ -81,11 +81,11 @@ namespace fbp {
 			dst = _src;
 
 			while (!_rects.empty()) {
-				auto bottom_skyline_iter = min_element(_skyline.begin(), _skyline.end(),
-					[](auto& lhs, auto& rhs) { return lhs.y < rhs.y; });
+				auto bottom_skyline_iter = min_element(_skyline.begin(), _skyline.end(), [](auto& lhs, auto& rhs) {
+					return lhs.y < rhs.y; });
 				int best_skyline_index = distance(_skyline.begin(), bottom_skyline_iter);
-				int min_rect_width = _src.at(*min_element(_rects.begin(), _rects.end(),
-					[this](int lhs, int rhs) { return _src.at(lhs).width < _src.at(rhs).width; })).width;
+				int min_rect_width = _src.at(*min_element(_rects.begin(), _rects.end(), [this](int lhs, int rhs) {
+					return _src.at(lhs).width < _src.at(rhs).width; })).width;
 
 				if (_skyline[best_skyline_index].width < min_rect_width) { // 最小宽度矩形放不进去，需要填坑
 					if (best_skyline_index == 0) { _skyline[best_skyline_index].y = _skyline[best_skyline_index + 1].y; }

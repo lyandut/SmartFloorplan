@@ -79,9 +79,9 @@ std::ostream& operator<<(std::ostream& os, const Config& cfg) {
 	}
 
 	switch (cfg.level_fbp_dist) {
-	case Config::LevelObjDist::SqrHpwlDist: os << "SqrHpwlDist,"; break;
-	case Config::LevelObjDist::SqrEuclideanDist: os << "SqrEuclideanDist,"; break;
-	case Config::LevelObjDist::SqrManhattanDist: os << "SqrManhattanDist,"; break;
+	case Config::LevelObjDist::SqrHpwlDist: os << "SqrHpwlDist"; break;
+	case Config::LevelObjDist::SqrEuclideanDist: os << "SqrEuclideanDist"; break;
+	case Config::LevelObjDist::SqrManhattanDist: os << "SqrManhattanDist"; break;
 	default: break;
 	}
 

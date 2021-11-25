@@ -46,7 +46,7 @@ namespace fbp {
 			reset_beam_tree();
 			int filter_width = beam_width * 2;
 			while (!_beam_tree.front().rects.empty()) {
-				vector<BranchNode> filter_children; filter_children.reserve(_beam_tree.size() * _beam_tree.front().rects.size() * 2);
+				vector<BranchNode> filter_children; filter_children.reserve(filter_width);
 				int nth_filter_width = filter_width / _beam_tree.size();
 				for (auto& parent : _beam_tree) {
 					check_parent(parent);
@@ -54,38 +54,66 @@ namespace fbp {
 					if (children.size() > nth_filter_width) {
 						// 1.局部评估：从全体子节点中选出`filter_width`个，每个父节点贡献`nth_filter_width`个
 						local_evaluation(children, alpha, beta);
-						nth_element(children.begin(), children.begin() + nth_filter_width - 1, children.end(),
-							[](auto& lhs, auto& rhs) { return lhs.local_eval < rhs.local_eval; });
+						auto nth_iter = children.begin() + nth_filter_width - 1;
+						nth_element(children.begin(), nth_iter, children.end(), [](auto& lhs, auto& rhs) {
+							return lhs.local_eval + numeric_limits<double>::epsilon() < rhs.local_eval; });
+						// 疏散性：MSVC的`nth_element`为完全排序实现，乱序兜底
+						double nth_local_eval = nth_iter->local_eval;
+						while (nth_iter != children.end() && nth_iter->local_eval == nth_local_eval) { nth_iter = next(nth_iter); }
+						shuffle(children.begin(), nth_iter, _gen);
 						filter_children.insert(filter_children.end(), children.begin(), children.begin() + nth_filter_width);
 					}
 					else { // 不足`nth_filter_width`个则全选中
 						filter_children.insert(filter_children.end(), children.begin(), children.end());
 					}
 				}
+				filter_children.shrink_to_fit();
 
-				vector<BranchNode> beam_children; beam_children.reserve(filter_children.size());
+				vector<BranchNode> beam_children; beam_children.reserve(beam_width);
 				if (filter_children.size() > beam_width) {
-					global_evaluation(filter_children, alpha, beta, false, level_wl, level_dist);
-					if (beam_width == 1) { // `beam_width==1`选全局评估最好的
-						beam_children.push_back(*min_element(filter_children.begin(), filter_children.end(),
-							[](auto& lhs, auto& rhs) { return lhs.global_eval < rhs.global_eval; }));
+					if (beam_width == 1) { // `beam_width==1`：随机选一个全局评估最好的
+						global_evaluation(filter_children, alpha, beta, false, level_wl, level_dist);
+						auto min_iter = filter_children.begin();
+						int cnt = 1;
+						for (auto iter = filter_children.begin() + 1; iter != filter_children.end(); ++iter) {
+							if (iter->global_eval > min_iter->global_eval + numeric_limits<double>::epsilon()) { continue; }
+							if (abs(iter->global_eval - min_iter->global_eval) <= numeric_limits<double>::epsilon()) {
+								++cnt;
+								if (_bernoulli_dist(_gen, bernoulli_distribution::param_type(1.0 / cnt))) { min_iter = iter; }
+							}
+							else {
+								min_iter = iter;
+								cnt = 1;
+							}
+						}
+						beam_children.push_back(*min_iter);
 					}
 					else {
 						int nth_beam_width = beam_width / 2;
-						global_evaluation(filter_children, alpha, beta, true, level_wl, level_dist);
 						// 2.全局评估：从`filter_children`中选出`nth_beam_width`个
-						nth_element(filter_children.begin(), filter_children.begin() + nth_beam_width - 1, filter_children.end(),
-							[](auto& lhs, auto& rhs) { return lhs.global_eval < rhs.global_eval; });
+						global_evaluation(filter_children, alpha, beta, false, level_wl, level_dist);
+						auto nth_iter = filter_children.begin() + nth_beam_width - 1;
+						nth_element(filter_children.begin(), nth_iter, filter_children.end(), [](auto& lhs, auto& rhs) {
+							return lhs.global_eval + numeric_limits<double>::epsilon() < rhs.global_eval; });
+						double nth_global_eval = nth_iter->global_eval;
+						while (nth_iter != filter_children.end() && nth_iter->global_eval == nth_global_eval) { nth_iter = next(nth_iter); }
+						shuffle(filter_children.begin(), nth_iter, _gen);
 						beam_children.insert(beam_children.end(), filter_children.begin(), filter_children.begin() + nth_beam_width);
 						// 3.向先前看评估：从剩余`filter_children`中选出`nth_beam_width`个
-						nth_element(filter_children.begin() + nth_beam_width, filter_children.begin() + beam_width - 1, filter_children.end(),
-							[](auto& lhs, auto& rhs) { return lhs.lookahead_eval < rhs.lookahead_eval; });
+						global_evaluation(filter_children, alpha, beta, true, level_wl, level_dist);
+						nth_iter = filter_children.begin() + beam_width - 1;
+						nth_element(filter_children.begin() + nth_beam_width, nth_iter, filter_children.end(), [](auto& lhs, auto& rhs) {
+							return lhs.lookahead_eval + numeric_limits<double>::epsilon() < rhs.lookahead_eval; });
+						double nth_lookahead_eval = nth_iter->lookahead_eval;
+						while (nth_iter != filter_children.end() && nth_iter->lookahead_eval == nth_lookahead_eval) { nth_iter = next(nth_iter); }
+						shuffle(filter_children.begin() + nth_beam_width, nth_iter, _gen);
 						beam_children.insert(beam_children.end(), filter_children.begin() + nth_beam_width, filter_children.begin() + beam_width);
 					}
 				}
 				else { // 不足`beam_width`个则全选中
 					beam_children.insert(beam_children.end(), filter_children.begin(), filter_children.end());
 				}
+				beam_children.shrink_to_fit();
 
 				// 4.执行选中动作，树往下生长一层
 				vector<BeamNode> new_beam_tree; new_beam_tree.reserve(beam_children.size());
@@ -95,7 +123,7 @@ namespace fbp {
 						child.chosen_rect_width, child.chosen_rect_height, child.chosen_rect_xcoord);
 					new_beam_tree.push_back(move(parent_copy));
 				}
-				_beam_tree = new_beam_tree;
+				_beam_tree.swap(new_beam_tree);
 			}
 		}
 
@@ -123,11 +151,11 @@ namespace fbp {
 		/// 检查填坑 & 设置bl_index
 		void check_parent(BeamNode& parent) {
 			int bottom_skyline_index;
-			int min_rect_width = _src.at(*min_element(parent.rects.begin(), parent.rects.end(),
-				[this](int lhs, int rhs) { return _src.at(lhs).width < _src.at(rhs).width; })).width;
+			int min_rect_width = _src.at(*min_element(parent.rects.begin(), parent.rects.end(), [this](int lhs, int rhs) {
+				return _src.at(lhs).width < _src.at(rhs).width; })).width;
 			while (1) {
-				auto bottom_skyline_iter = min_element(parent.skyline.begin(), parent.skyline.end(),
-					[](auto& lhs, auto& rhs) { return lhs.y < rhs.y; });
+				auto bottom_skyline_iter = min_element(parent.skyline.begin(), parent.skyline.end(), [](auto& lhs, auto& rhs) {
+					return lhs.y < rhs.y; });
 				bottom_skyline_index = distance(parent.skyline.begin(), bottom_skyline_iter);
 
 				if (parent.skyline[bottom_skyline_index].width < min_rect_width) { // 最小宽度矩形放不进去，需要填坑
@@ -166,6 +194,7 @@ namespace fbp {
 					}
 				}
 			}
+			children.shrink_to_fit();
 			return children;
 		}
 
@@ -174,8 +203,10 @@ namespace fbp {
 			vector<int> area_rank(children.size()), wire_rank(children.size());
 			iota(area_rank.begin(), area_rank.end(), 0);
 			iota(wire_rank.begin(), wire_rank.end(), 0);
-			sort(area_rank.begin(), area_rank.end(), [&](int lhs, int rhs) { return children[lhs].area_score > children[rhs].area_score; });
-			sort(wire_rank.begin(), wire_rank.end(), [&](int lhs, int rhs) { return children[lhs].wire_score < children[rhs].wire_score; });
+			sort(area_rank.begin(), area_rank.end(), [&](int lhs, int rhs) {
+				return children[lhs].area_score > children[rhs].area_score; });
+			sort(wire_rank.begin(), wire_rank.end(), [&](int lhs, int rhs) {
+				return children[lhs].wire_score + numeric_limits<double>::epsilon() < children[rhs].wire_score; });
 			for (int i = 0; i < children.size(); ++i) {
 				int area_score = distance(area_rank.begin(), find(area_rank.begin(), area_rank.end(), i));
 				int wire_socre = distance(wire_rank.begin(), find(wire_rank.begin(), wire_rank.end(), i));
@@ -260,7 +291,7 @@ namespace fbp {
 					double max_y = max(node.parent->netwire[nid].max_y, pin_y);
 					double min_y = min(node.parent->netwire[nid].min_y, pin_y);
 					double hpwl = max_x - min_x + max_y - min_y;
-					if (hpwl > 0) { // 有其他已放置的块
+					if (hpwl > numeric_limits<double>::epsilon()) { // 有其他已放置的块
 						net_num += 1;
 						net_length += hpwl - node.parent->netwire[nid].hpwl;
 					}
@@ -289,8 +320,8 @@ namespace fbp {
 
 		/// 在当前局部解的基础上，贪心构造一个完整/局部解
 		int greedy_construction(BeamNode& parent, bool is_lookahead) {
-			int max_skyline_height = max_element(parent.skyline.begin(), parent.skyline.end(),
-				[](auto& lhs, auto& rhs) { return lhs.y < rhs.y; })->y;
+			int max_skyline_height = max_element(parent.skyline.begin(), parent.skyline.end(), [](auto& lhs, auto& rhs) {
+				return lhs.y < rhs.y; })->y;
 			int lookahead_stop_height = max_skyline_height;
 
 			while (!parent.rects.empty()) {
@@ -412,6 +443,7 @@ namespace fbp {
 
 	private:
 		vector<BeamNode> _beam_tree;
+		bernoulli_distribution _bernoulli_dist;
 	};
 
 }
