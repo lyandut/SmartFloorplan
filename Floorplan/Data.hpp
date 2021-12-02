@@ -10,7 +10,6 @@
 
 struct Rect {
 	int id;
-	int gid; // 分组id
 	int x;
 	int y;
 	int width;
@@ -20,29 +19,24 @@ struct Rect {
 struct Block {
 	std::string name;
 	std::vector<int> net_ids;
-	int x_coordinate, y_coordinate;
-	int width, height;
-	int area;
+	int x_coordinate = 0;
+	int y_coordinate = 0;
+	int width = 0;
+	int height = 0;
+	int area = 0;
 };
 
 struct Terminal {
 	std::string name;
 	std::vector<int> net_ids;
-	int x_coordinate, y_coordinate;
+	int x_coordinate = 0;
+	int y_coordinate = 0;
 };
 
 struct Net {
-	int degree;
+	int degree = 0;
 	std::vector<int> block_list;
 	std::vector<int> terminal_list;
-};
-
-/// `group_boundaries`分组边界，划分时使用
-struct Boundary {
-	double x;
-	double y;
-	double width;
-	double height;
 };
 
 /// Represents a single level (a horizontal line) of the skyline/horizon/envelope.

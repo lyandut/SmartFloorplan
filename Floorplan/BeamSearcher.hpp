@@ -19,7 +19,7 @@ namespace fbp {
 			vector<bool> is_packed;
 			Netwire netwire;
 			Skyline skyline;
-			int bl_index; // bottom_left_skyline_index
+			int bl_index = 0; // bottom_left_skyline_index
 		};
 
 		/// β层节点定义
@@ -123,8 +123,9 @@ namespace fbp {
 						child.chosen_rect_width, child.chosen_rect_height, child.chosen_rect_xcoord);
 					new_beam_tree.push_back(move(parent_copy));
 				}
-				_beam_tree.swap(new_beam_tree);
+				new_beam_tree.swap(_beam_tree);
 			}
+			vector<BeamNode>().swap(_beam_tree);
 		}
 
 	private:
@@ -221,20 +222,13 @@ namespace fbp {
 				BeamNode parent_copy = *child.parent;
 				insert_chosen_rect_for_parent(parent_copy, child.chosen_rect_index,
 					child.chosen_rect_width, child.chosen_rect_height, child.chosen_rect_xcoord);
-				int target_height = greedy_construction(parent_copy, is_lookahead);
-				if (target_height > _bin_height) {
-					if (is_lookahead) { child.lookahead_eval = INF; }
-					else { child.global_eval = INF; }
-				}
-				else {
-					int target_area = target_height * _bin_width;
-					double target_dist;
-					double target_wirelength = cal_wirelength(parent_copy.dst, parent_copy.is_packed, target_dist, level_wl, level_dist);
-					double target_object = cal_objective(target_area, target_dist, alpha, beta);
-					if (parent_copy.rects.empty()) { update_objective(target_object, target_area, target_wirelength, parent_copy.dst); }
-					if (is_lookahead) { child.lookahead_eval = target_object; }
-					else { child.global_eval = target_object; }
-				}
+				int target_area = greedy_construction(parent_copy, is_lookahead) * _bin_width;
+				double target_dist;
+				double target_wirelength = cal_wirelength(parent_copy.dst, parent_copy.is_packed, target_dist, level_wl, level_dist);
+				double target_object = cal_objective(target_area, target_dist, alpha, beta);
+				if (parent_copy.rects.empty()) { update_objective(target_object, target_area, target_wirelength, parent_copy.dst); }
+				if (is_lookahead) { child.lookahead_eval = target_object; }
+				else { child.global_eval = target_object; }
 			}
 		}
 
@@ -333,7 +327,6 @@ namespace fbp {
 				find_rect_for_parent(parent, rect_index, rect_width, rect_height, rect_xcoord);
 				max_skyline_height = max(max_skyline_height,
 					insert_chosen_rect_for_parent(parent, rect_index, rect_width, rect_height, rect_xcoord));
-				if (max_skyline_height > _bin_height) { return INF; } // 超出_bin_height提前剪枝
 			}
 
 			return max_skyline_height;

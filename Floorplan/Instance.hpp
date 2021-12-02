@@ -14,7 +14,7 @@ using namespace std;
 
 class Environment {
 public:
-	Environment(const string &bench, const string &type, const string &name) :
+	Environment(const string& bench, const string& type, const string& name) :
 		_ins_bench(bench), _ins_type(type), _ins_name(name) {}
 
 	string blocks_path() const { return instance_dir() + benchmark_dir() + type_dir() + _ins_name + ".blocks"; }
@@ -41,7 +41,7 @@ public:
 
 class Instance {
 public:
-	Instance(const Environment &env) : _env(env), _fixed_width(0), _fixed_height(0) { read_instance(); }
+	Instance(const Environment& env) : _env(env), _fixed_width(0), _fixed_height(0) { read_instance(); }
 
 	/// 待打包矩形列表，默认w≤h避免后续计算增加无用判断
 	vector<Rect> get_rects(bool rotated = true) const {
@@ -49,7 +49,7 @@ public:
 		rects.reserve(_block_num);
 		if (rotated) {
 			for (int i = 0; i < _block_num; ++i) {
-				rects.push_back({ i, -1,
+				rects.push_back({ i,
 					_blocks[i].x_coordinate,
 					_blocks[i].y_coordinate,
 					min(_blocks[i].width, _blocks[i].height),
@@ -58,7 +58,7 @@ public:
 		}
 		else {
 			for (int i = 0; i < _block_num; ++i) {
-				rects.push_back({ i, -1,
+				rects.push_back({ i,
 					_blocks[i].x_coordinate,
 					_blocks[i].y_coordinate,
 					_blocks[i].width,
@@ -68,9 +68,9 @@ public:
 		return rects;
 	}
 
-	const vector<Block> & get_blocks() const { return _blocks; }
-	const vector<Terminal> & get_terminals() const { return _terminals; }
-	const vector<Net> & get_netlist() const { return _nets; }
+	const vector<Block>& get_blocks() const { return _blocks; }
+	const vector<Terminal>& get_terminals() const { return _terminals; }
+	const vector<Net>& get_netlist() const { return _nets; }
 
 	int get_block_num() const { return _block_num; }
 	int get_terminal_num() const { return _terminal_num; }
@@ -103,7 +103,7 @@ private:
 		_total_area = 0;
 		for (int i = 0; i < _block_num; ++i) {
 			int a, b, c, d, e, f; // ignore parameter
-			char block_name[10];
+			char block_name[10] = { 0 };
 			fscanf(file, "%s hardrectilinear 4 (%d, %d) (%d, %d) (%d, %d) (%d, %d)\n",
 				block_name, &a, &b, &c, &d, &_blocks[i].width, &_blocks[i].height, &e, &f);
 			_blocks[i].name = block_name;
@@ -113,7 +113,7 @@ private:
 
 		_terminals.resize(_terminal_num);
 		for (int i = 0; i < _terminal_num; ++i) {
-			char terminal_name[10];
+			char terminal_name[10] = { 0 };
 			fscanf(file, "%s terminal\n", terminal_name);
 			_terminals[i].name = terminal_name;
 		}
@@ -145,14 +145,14 @@ private:
 				else {
 					string tmp_name = tmp_char;
 					auto block_iter = find_if(_blocks.begin(), _blocks.end(),
-						[&tmp_name](Block &block) { return  block.name == tmp_name; });
+						[&tmp_name](Block& block) { return  block.name == tmp_name; });
 					if (block_iter != _blocks.end()) { // it's a block
 						block_iter->net_ids.push_back(i);
 						_nets[i].block_list.push_back(distance(_blocks.begin(), block_iter));
 					}
 					else { // it's a terminal
 						auto terminal_iter = find_if(_terminals.begin(), _terminals.end(),
-							[&tmp_name](Terminal &terminal) { return terminal.name == tmp_name; });
+							[&tmp_name](Terminal& terminal) { return terminal.name == tmp_name; });
 						assert(terminal_iter != _terminals.end());
 						terminal_iter->net_ids.push_back(i);
 						_nets[i].terminal_list.push_back(distance(_terminals.begin(), terminal_iter));
@@ -181,7 +181,7 @@ private:
 			int x, y;
 			fscanf(file, "%s %d %d\n", block_name, &x, &y);
 			auto iter = find_if(_blocks.begin(), _blocks.end(),
-				[&block_name](Block &block) { return block.name == string(block_name); });
+				[&block_name](Block& block) { return block.name == string(block_name); });
 			assert(iter != _blocks.end());
 			iter->x_coordinate = x;
 			iter->y_coordinate = y;
@@ -194,7 +194,7 @@ private:
 			int x, y;
 			fscanf(file, "%s %d %d\n", terminal_name, &x, &y);
 			auto iter = find_if(_terminals.begin(), _terminals.end(),
-				[&terminal_name](Terminal &terminal) { return terminal.name == string(terminal_name); });
+				[&terminal_name](Terminal& terminal) { return terminal.name == string(terminal_name); });
 			assert(iter != _terminals.end());
 			iter->x_coordinate = x;
 			iter->y_coordinate = y;
@@ -208,7 +208,7 @@ private:
 	}
 
 private:
-	const Environment &_env;
+	const Environment& _env;
 
 	// fixed outline info
 	int _fixed_width;

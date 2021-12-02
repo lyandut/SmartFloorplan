@@ -2,7 +2,7 @@
 // @author   liyan
 // @contact  lyan_dut@outlook.com
 //
-#include "AdaptiveSelecter.hpp" 
+#include "AdaptiveSelecter.hpp"
 
 
 namespace test {
@@ -57,8 +57,8 @@ namespace test {
 		}
 	}
 
-	void test_floorplan_packer() {
-		Environment env("GSRC", "H", "n300");
+	void test_floorplan_packer(const string& ins_bench, const string& int_name) {
+		Environment env(ins_bench, "H", int_name);
 		Instance ins(env);
 		vector<Rect> src = ins.get_rects();
 		double dead_ratio = 1.05;
@@ -100,7 +100,7 @@ int main(int argc, char** argv) {
 
 	//test::record_gsrc_init_sol();
 
-	//test::test_floorplan_packer();
+	//test::test_floorplan_packer("MCNC", "hp");
 
 	//run_single_ins("MCNC", "hp");
 

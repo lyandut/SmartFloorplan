@@ -78,7 +78,7 @@ public:
 		vector<CandidateWidth> cw_objs; cw_objs.reserve(candidate_widths.size());
 		for (int bin_width : candidate_widths) {
 			cw_objs.push_back({ bin_width, 1, make_shared<T>(_ins, src, bin_width, _gen) });
-			cw_objs.back().fbp_solver->set_bin_height(ceil(1.0 * obj_map.at(_env._ins_name).first / bin_width)); // 仅用于beam_search提前剪枝
+			cw_objs.back().fbp_solver->set_bin_height(ceil(1.0 * obj_map.at(_env._ins_name).first / bin_width));
 			cw_objs.back().fbp_solver->run(1, _cfg.alpha, _cfg.beta, _cfg.level_fbp_wl, _cfg.level_fbp_dist);
 			update_objective(cw_objs.back());
 		}
