@@ -3,6 +3,7 @@
 
 Deploy/*
 !Deploy/BestResult.md
+!Deploy/Comparison.pdf
 !Deploy/Instance/
 !Deploy/Solution/
 Deploy/Solution/*
