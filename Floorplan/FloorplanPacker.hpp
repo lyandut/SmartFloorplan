@@ -53,7 +53,7 @@ namespace fbp {
 	protected:
 		/// 目标函数
 		double cal_objective(int area, double dist, double alpha, double beta) {
-			return (alpha * area + beta * dist) / _ins.get_total_area();
+			return alpha * area + beta * dist;
 		}
 
 		/// 计算线长，默认引脚在中心
@@ -94,10 +94,12 @@ namespace fbp {
 				}
 				double hpwl = max_x - min_x + max_y - min_y;
 				total_wirelength += hpwl;
-				if (level_dist == Config::LevelObjDist::SqrHpwlDist) { dist += hpwl * hpwl; } // ① 线长平方和
 			}
 
 			switch (level_dist) {
+			case Config::LevelObjDist::WireLengthDist:
+				dist = total_wirelength; // ① 线长
+				break;
 			case Config::LevelObjDist::SqrEuclideanDist:
 				for (int i = 0; i < _graph.size(); ++i) {
 					for (int j = i + 1; j < _graph.size(); ++j) {

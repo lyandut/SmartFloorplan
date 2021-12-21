@@ -35,8 +35,8 @@ static std::unordered_map<std::string, std::pair<int, int>> obj_map{
 struct Config {
 	unsigned int random_seed = std::random_device{}(); // 随机种子，release版本使用`random_device{}()`
 
-	double alpha = 0.5, beta = 0.5; // 控制面积、线长权重
-	double lb_scale = 0.8, ub_scale = 1.2; // 控制bin分支数目、长宽比
+	double alpha = 0.5, beta = 0.5;        // 控制面积、线长权重
+	double lb_scale = 0.8, ub_scale = 1.2; // 控制候选宽度数目、长宽比
 
 	int ub_time = 3600; // ASA超时时间
 	int ub_iter = 8192; // RLS最大迭代次数 or BS最大树宽度
@@ -58,11 +58,12 @@ struct Config {
 		BlockAndTerminal // 计算block和terminal互连线长
 	} level_fbp_wl = LevelWireLength::Block;
 
-	enum class LevelObjDist { // EDAthon2020P4目标函数中dist计算方法
-		SqrHpwlDist,          // 整个网表半周长的平方
-		SqrEuclideanDist,     // 矩形对之间欧式平方距离
-		SqrManhattanDist      // 矩形对之间曼哈顿平方距离
-	} level_fbp_dist = LevelObjDist::SqrHpwlDist;
+	// EDAthon2020P4目标函数：(Af+D)/Ac，https://blog.csdn.net/nobleman__/article/details/107880261
+	enum class LevelObjDist {
+		WireLengthDist,   // 线长
+		SqrEuclideanDist, // 矩形对之间欧式平方距离的和
+		SqrManhattanDist  // 矩形对之间曼哈顿平方距离的和
+	} level_fbp_dist = LevelObjDist::SqrManhattanDist;
 } cfg;
 
 std::ostream& operator<<(std::ostream& os, const Config& cfg) {
@@ -79,7 +80,7 @@ std::ostream& operator<<(std::ostream& os, const Config& cfg) {
 	}
 
 	switch (cfg.level_fbp_dist) {
-	case Config::LevelObjDist::SqrHpwlDist: os << "SqrHpwlDist"; break;
+	case Config::LevelObjDist::WireLengthDist: os << "WireLengthDist"; break;
 	case Config::LevelObjDist::SqrEuclideanDist: os << "SqrEuclideanDist"; break;
 	case Config::LevelObjDist::SqrManhattanDist: os << "SqrManhattanDist"; break;
 	default: break;

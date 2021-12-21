@@ -190,7 +190,7 @@ namespace fbp {
 					child.chosen_rect_height = rotate ? _src.at(r).width : _src.at(r).height;
 					if (score_area_and_set_xcoord(parent, child.chosen_rect_width, child.chosen_rect_height,
 						child.chosen_rect_xcoord, child.area_score)) {
-						child.wire_score = score_wire(child, level_dist);
+						child.wire_score = score_wire(child);
 						children.push_back(move(child));
 					}
 				}
@@ -270,46 +270,24 @@ namespace fbp {
 			return true;
 		}
 
-		/// 线长打分策略，连线长度/连线数目
-		double score_wire(const BranchNode& node, Config::LevelObjDist level_dist) {
-			double avg_length;
+		/// 线长打分策略，平均线长
+		double score_wire(const BranchNode& node) {
 			double pin_x = node.chosen_rect_xcoord + node.chosen_rect_width * 0.5;
 			double pin_y = node.parent->skyline[node.parent->bl_index].y + node.chosen_rect_height * 0.5;
 
-			if (level_dist == Config::LevelObjDist::SqrHpwlDist) {
-				int net_num = 0;
-				double net_length = 0;
-				for (int nid : _ins.get_blocks().at(node.chosen_rect_index).net_ids) {
-					double max_x = max(node.parent->netwire[nid].max_x, pin_x);
-					double min_x = min(node.parent->netwire[nid].min_x, pin_x);
-					double max_y = max(node.parent->netwire[nid].max_y, pin_y);
-					double min_y = min(node.parent->netwire[nid].min_y, pin_y);
-					double hpwl = max_x - min_x + max_y - min_y;
-					if (hpwl > numeric_limits<double>::epsilon()) { // 有其他已放置的块
-						net_num += 1;
-						net_length += hpwl - node.parent->netwire[nid].hpwl;
-					}
+			int wire_num = 0;
+			double wire_length = 0;
+			for (int i = 0; i < _graph.size(); ++i) {
+				if (_graph[i][node.chosen_rect_index] && node.parent->is_packed[i]) {
+					wire_num += _graph[i][node.chosen_rect_index];
+					wire_length += _graph[i][node.chosen_rect_index] * utils::cal_distance(
+						utils::LevelDist::ManhattanDist, pin_x, pin_y,
+						node.parent->dst[i].x + node.parent->dst[i].width * 0.5,
+						node.parent->dst[i].y + node.parent->dst[i].height * 0.5);
 				}
-				avg_length = net_num ? net_length / net_num : INF;
-			}
-			else {
-				utils::LevelDist method = level_dist == Config::LevelObjDist::SqrEuclideanDist ?
-					utils::LevelDist::EuclideanDist : utils::LevelDist::ManhattanDist;
-				int wire_num = 0;
-				double wire_length = 0;
-				for (int i = 0; i < _graph.size(); ++i) {
-					if (_graph[i][node.chosen_rect_index] && node.parent->is_packed[i]) {
-						//wire_num += 1; // 两个块同时属于多个网，重复连线仅算一次
-						wire_num += _graph[i][node.chosen_rect_index]; // 重复连线算多次
-						wire_length += utils::cal_distance(method, pin_x, pin_y,
-							node.parent->dst[i].x + node.parent->dst[i].width * 0.5,
-							node.parent->dst[i].y + node.parent->dst[i].height * 0.5);
-					}
-				}
-				avg_length = wire_num ? wire_length / wire_num : INF;
 			}
 
-			return avg_length;
+			return  wire_num ? wire_length / wire_num : INF; // 如果与已放置的块没有关联，则赋予低优先级(INF)
 		}
 
 		/// 在当前局部解的基础上，贪心构造一个完整/局部解

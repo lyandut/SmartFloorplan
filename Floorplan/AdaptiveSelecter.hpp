@@ -78,7 +78,6 @@ public:
 		vector<CandidateWidth> cw_objs; cw_objs.reserve(candidate_widths.size());
 		for (int bin_width : candidate_widths) {
 			cw_objs.push_back({ bin_width, 1, make_shared<T>(_ins, src, bin_width, _gen) });
-			cw_objs.back().fbp_solver->set_bin_height(ceil(1.0 * obj_map.at(_env._ins_name).first / bin_width));
 			cw_objs.back().fbp_solver->run(1, _cfg.alpha, _cfg.beta, _cfg.level_fbp_wl, _cfg.level_fbp_dist);
 			update_objective(cw_objs.back());
 		}
@@ -86,8 +85,7 @@ public:
 		sort(cw_objs.begin(), cw_objs.end(), [](auto& lhs, auto& rhs) {
 			return lhs.fbp_solver->get_objective() > rhs.fbp_solver->get_objective(); });
 		// 迭代优化
-		while ((obj_map.at(_env._ins_name).first < _best_area || obj_map.at(_env._ins_name).second < _best_wirelength) &&
-			static_cast<double>(clock() - _start) / CLOCKS_PER_SEC < _cfg.ub_time) {
+		while (static_cast<double>(clock() - _start) / CLOCKS_PER_SEC < _cfg.ub_time) {
 			CandidateWidth& picked_width = _gen() % 10 ? cw_objs[discrete_dist(_gen)] : cw_objs[uniform_dist(_gen)]; // 疏散性：90%概率选择，10%随机选择
 			double old_objective = picked_width.fbp_solver->get_objective();
 			picked_width.iter = min(2 * picked_width.iter, _cfg.ub_iter);
