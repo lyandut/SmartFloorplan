@@ -20,7 +20,7 @@ $$
 
 <img src="img/asa.png" alt="asa" style="zoom: 49%;" />    <img src="img/beamsearch.png" alt="beam search" style="zoom: 49%;" />
 
-## 算例改进
+## 算例求解情况
 
 详见 [BestResult](Deploy/BestResult.md)。
 
