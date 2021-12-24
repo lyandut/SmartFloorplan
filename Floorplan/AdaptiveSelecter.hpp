@@ -237,10 +237,9 @@ private:
 		return candidate_widths;
 	}
 
-	/// 更新历史最优解，ps：这里的更新条件区别于 FloorplanPacker::update_objective()
-	/// area<best_area && wire<best_wire ==> obj<best_obj，反之则不能覆盖
 	void update_objective(const CandidateWidth& cw_obj) {
-		if (cw_obj.fbp_solver->get_area() < _best_area && cw_obj.fbp_solver->get_wirelength() < _best_wirelength) {
+		//if (_best_area > cw_obj.fbp_solver->get_area() && _best_wirelength > cw_obj.fbp_solver->get_wirelength())
+		if (_best_objective > cw_obj.fbp_solver->get_objective() + numeric_limits<double>::epsilon()) {
 			_duration = static_cast<double>(clock() - _start) / CLOCKS_PER_SEC;
 			_iteration = cw_obj.iter;
 			_best_objective = cw_obj.fbp_solver->get_objective();

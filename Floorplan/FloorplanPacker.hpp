@@ -131,7 +131,7 @@ namespace fbp {
 
 		/// 更新最优解
 		void update_objective(double objective, int area, double wirelength, const vector<Rect>& dst) {
-			if (_objective > objective) {
+			if (_objective > objective + numeric_limits<double>::epsilon()) {
 				_objective = objective;
 				_obj_area = area;
 				_obj_wirelength = wirelength;
