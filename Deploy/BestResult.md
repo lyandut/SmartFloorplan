@@ -2,7 +2,7 @@
 
 ## 纯面积（α=1.0，β=0.0）
 
-| MCNC  |     Chen-2017-area      | Wei-2018-fillratio (%)  | My Area | My FillRatio (%) | Search |
+| MCNC  |     Huang-2017-area     | Wei-2018-fillratio (%)  | My Area | My FillRatio (%) | Search |
 | :---: | :---------------------: | :---------------------: | :-----: | :--------------: | :----: |
 | apte  | :white_check_mark:46.92 | :white_check_mark:99.23 |  46.92  |      99.23       |   BS   |
 | xerox |          19.8           |          97.71          |  19.87  |      97.40       |   BS   |
@@ -10,7 +10,7 @@
 | ami33 | :white_check_mark:1.18  |          99.33          |  1.18   |      97.90       |  RLS   |
 | ami49 |          36.16          |          99.07          |  36.21  |      97.89       |  RLS   |
 
-| GSRC |      Chen-2020-area      | Wei-2018-fillratio (%)  | My Area | My FillRatio (%) | Search |
+| GSRC |     Huang-2020-area      | Wei-2018-fillratio (%)  | My Area | My FillRatio (%) | Search |
 | :--: | :----------------------: | :---------------------: | :-----: | :--------------: | :----: |
 | n10  |            NR            | :white_check_mark:96.65 | 226092  |      98.05       |   BS   |
 | n30  | :white_check_mark:216464 |          98.34          | 212625  |      98.10       |   BS   |
@@ -23,7 +23,7 @@
 
 ## 面积+线长（α=0.5，β=0.5）
 
-| MCNC  |     Chen-2017-area      |      Chen-2017-wire      | My Area | My Wire | Search |
+| MCNC  |     Huang-2017-area     |     Huang-2017-wire      | My Area | My Wire | Search |
 | :---: | :---------------------: | :----------------------: | :-----: | :-----: | :----: |
 | apte  | :white_check_mark:48.48 | :white_check_mark:408.66 |  47.08  | 241.22  |   BS   |
 | xerox | :white_check_mark:20.42 |          399.66          |  20.12  | 525.74  |   BS   |
@@ -31,7 +31,7 @@
 | ami33 | :white_check_mark:1.24  |          47.71           |  1.20   |  49.77  |   BS   |
 | ami49 | :white_check_mark:38.94 |          666.25          |  37.44  | 823.88  |   BS   |
 
-| GSRC |      Chen-2020-area      |      Chen-2020-wire      | My Area | My Wire | Search |
+| GSRC |     Huang-2020-area      |     Huang-2020-wire      | My Area | My Wire | Search |
 | :--: | :----------------------: | :----------------------: | :-----: | :-----: | :----: |
 | n10  |            NR            |            NR            | 230308  |  15600  |   BS   |
 | n30  | :white_check_mark:217592 | :white_check_mark:115111 | 216480  |  46686  |   BS   |
